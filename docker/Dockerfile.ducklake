@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir duckdb
+
+RUN python -c "import duckdb; conn = duckdb.connect(); conn.execute('INSTALL ducklake'); conn.execute('LOAD ducklake'); conn.close()"
+
+WORKDIR /app
+
+COPY ducklake/ /app/ducklake_lib/
+COPY scripts/init_ducklake.sh /app/scripts/init_ducklake.sh
+
+RUN chmod +x /app/scripts/init_ducklake.sh
+
+CMD ["/app/scripts/init_ducklake.sh"]

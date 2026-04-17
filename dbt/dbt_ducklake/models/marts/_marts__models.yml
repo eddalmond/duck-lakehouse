@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: fct_vaccination_events
+    description: "Mart: deduplicated, validated vaccination event facts"
+    columns:
+      - name: vaccination_event_id
+        description: "Primary key (unique_id from source)"
+        tests:
+          - not_null
+          - unique
+      - name: nhs_number
+        description: "NHS number"
+        tests:
+          - not_null
+      - name: site_code
+        description: "ODS site code"
+        tests:
+          - not_null
+      - name: vaccination_datetime
+        description: "Vaccination administration datetime"
+        tests:
+          - not_null
+      - name: action_flag
+        description: "Action flag"
+        tests:
+          - accepted_values:
+              values: ['new', 'update']
+      - name: primary_source
+        description: "Primary source boolean"
+        tests:
+          - not_null
+      - name: dose_sequence
+        description: "Dose sequence number"
+
+  - name: dim_patient
+    description: "Mart: slowly-changing dimension for patients"
+    columns:
+      - name: patient_id
+        description: "Surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: nhs_number
+        description: "NHS number (natural key)"
+        tests:
+          - not_null
+          - unique
+      - name: person_forename
+        description: "Patient forename"
+      - name: person_surname
+        description: "Patient surname"
+
+  - name: dim_site
+    description: "Mart: dimension for vaccination sites"
+    columns:
+      - name: site_id
+        description: "Surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: site_code
+        description: "ODS site code (natural key)"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_vaccine
+    description: "Mart: dimension for vaccine products"
+    columns:
+      - name: vaccine_id
+        description: "Surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: vaccine_product_code
+        description: "dm+d AMP code (natural key)"
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_vaccination_summary
+    description: "Mart: aggregated vaccination summaries by site/date and vaccine type"
+    columns:
+      - name: summary_type
+        description: "Type of summary: site_date or vaccine_type"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['site_date', 'vaccine_type']
+      - name: event_count
+        description: "Count of vaccination events"
+        tests:
+          - not_null
+      - name: unique_patients
+        description: "Count of distinct patients"
+        tests:
+          - not_null

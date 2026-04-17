@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: int_vaccinations_parsed
+    description: "Intermediate: parsed and type-cast vaccination records"
+    columns:
+      - name: nhs_number
+        description: "NHS number (10 digits)"
+        tests:
+          - not_null
+      - name: person_dob
+        description: "Parsed date of birth"
+        tests:
+          - not_null
+      - name: vaccination_datetime
+        description: "Parsed vaccination datetime"
+        tests:
+          - not_null
+      - name: action_flag
+        description: "Lowercased action flag"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['new', 'update', 'delete']
+      - name: primary_source
+        description: "Boolean primary source flag"
+        tests:
+          - not_null
+      - name: dose_sequence
+        description: "Parsed dose sequence integer"
+      - name: dose_amount
+        description: "Parsed dose amount as double"
+      - name: recorded_date
+        description: "Parsed recorded date"
+        tests:
+          - not_null
+
+  - name: int_vaccinations_validated
+    description: "Intermediate: validated vaccination records with validation_status column"
+    columns:
+      - name: validation_status
+        description: "Validation result: 'valid' or specific error code"
+        tests:
+          - not_null
+      - name: nhs_number
+        description: "NHS number"
+        tests:
+          - not_null
+      - name: unique_id
+        description: "Unique event identifier"
+        tests:
+          - not_null
+
+  - name: int_vaccinations_deduplicated
+    description: "Intermediate: deduplicated vaccination records (latest per unique_id, excluding deletes)"
+    columns:
+      - name: unique_id
+        description: "Unique event identifier (dedup key)"
+        tests:
+          - not_null
+          - unique
+      - name: validation_status
+        description: "Always 'valid' after filtering"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['valid']
+      - name: action_flag
+        description: "Action flag (excludes 'delete')"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['new', 'update']

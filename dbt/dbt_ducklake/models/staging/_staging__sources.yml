@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: vaccination_lake
+    database: vaccination_lake
+    schema: staging
+    tables:
+      - name: stg_vaccinations
+        description: "Raw v5.1 vaccination records ingested from MESH CSV files"

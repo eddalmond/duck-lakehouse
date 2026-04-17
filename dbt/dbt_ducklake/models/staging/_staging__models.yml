@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_vaccinations
+    description: "Staging layer: raw v5.1 vaccination records with column renaming"
+    columns:
+      - name: nhs_number
+        description: "NHS number (10 digits, no spaces)"
+        tests:
+          - not_null
+      - name: person_forename
+        description: "Patient forename"
+        tests:
+          - not_null
+      - name: person_surname
+        description: "Patient surname"
+        tests:
+          - not_null
+      - name: person_dob_raw
+        description: "Raw date of birth string (YYYYMMDD)"
+        tests:
+          - not_null
+      - name: person_gender_code
+        description: "Gender code: 0, 1, 2, or 9"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['0', '1', '2', '9']
+      - name: person_postcode
+        description: "Patient postcode"
+        tests:
+          - not_null
+      - name: date_and_time_raw
+        description: "Raw vaccination datetime string"
+        tests:
+          - not_null
+      - name: site_code
+        description: "ODS site code"
+        tests:
+          - not_null
+      - name: unique_id
+        description: "Unique event identifier"
+        tests:
+          - not_null
+      - name: action_flag
+        description: "Record action: new, update, or delete"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['new', 'update', 'delete']
+      - name: primary_source_raw
+        description: "Primary source flag (TRUE/FALSE)"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['TRUE', 'FALSE']
+      - name: vaccination_procedure_code
+        description: "SNOMED-CT vaccination procedure code"
+        tests:
+          - not_null
+      - name: location_code
+        description: "Location code"
+        tests:
+          - not_null

@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# DuckLake runtime data
+duck_lakehouse/ducklake/catalog/*.ducklake
+duck_lakehouse/ducklake/catalog/*.wal
+duck_lakehouse/ducklake/data/**/*.parquet
+duck_lakehouse/ducklake/data/**/*.ducklake
+
+# MESH runtime data
+duck_lakehouse/mesh_simulator/archive/*.csv
+duck_lakehouse/mesh_simulator/inbox/*.csv
+duck_lakehouse/mesh_simulator/processing/*.csv
+duck_lakehouse/mesh_simulator/logs/*.jsonl
+
+# dbt
+dbt/dbt_ducklake/target/
+dbt/dbt_ducklake/dbt_packages/
+dbt/dbt_ducklake/logs/
+dbt/dbt_ducklake/.user.yml
+dbt/dbt_ducklake/package-lock.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data directory (legacy)
+data/
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.local

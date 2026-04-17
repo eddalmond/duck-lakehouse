@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  ducklake:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ducklake
+    container_name: ducklake
+    volumes:
+      - ducklake-catalog:/app/catalog
+      - ducklake-data:/app/data
+      - ./mesh_simulator/inbox:/app/mesh/inbox
+      - ./mesh_simulator/archive:/app/mesh/archive
+      - ./mesh_simulator/processing:/app/mesh/processing
+      - ./mesh_simulator/error:/app/mesh/error
+      - ./mesh_simulator/logs:/app/mesh/logs
+    environment:
+      - DUCKLAKE_CATALOG=/app/catalog/vaccination_lake.ducklake
+      - DUCKLAKE_DATA=/app/data
+    ports:
+      - "5432:5432"
+
+  mesh-simulator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mesh
+    container_name: mesh-simulator
+    volumes:
+      - ./mesh_simulator/inbox:/app/mesh/inbox
+      - ./mesh_simulator/archive:/app/mesh/archive
+      - ./mesh_simulator/processing:/app/mesh/processing
+      - ./mesh_simulator/error:/app/mesh/error
+      - ./mesh_simulator/logs:/app/mesh/logs
+    depends_on:
+      - ducklake
+    environment:
+      - MESH_BASE_DIR=/app/mesh
+      - DUCKLAKE_CATALOG=/app/catalog/vaccination_lake.ducklake
+      - DUCKLAKE_DATA=/app/data
+
+  dbt:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbt
+    container_name: dbt-runner
+    volumes:
+      - ducklake-catalog:/app/catalog
+      - ducklake-data:/app/data
+      - ./dbt/dbt_ducklake:/app/dbt_project
+    working_dir: /app/dbt_project
+    depends_on:
+      - ducklake
+    environment:
+      - DBT_PROJECT_DIR=/app/dbt_project
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ducklake-postgres
+    profiles:
+      - aws
+    environment:
+      POSTGRES_USER: ducklake
+      POSTGRES_PASSWORD: ducklake_dev
+      POSTGRES_DB: ducklake_catalog
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  ducklake-catalog:
+  ducklake-data:
+  postgres-data:

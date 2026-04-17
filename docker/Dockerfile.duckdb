@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir duckdb
+
+COPY duck_lakehouse/ducklake/init_ducklake.py /app/init_ducklake.py
+COPY duck_lakehouse/ducklake/ingest.py /app/ingest.py
+COPY duck_lakehouse/data_generator/generate_v5_data.py /app/generate_v5_data.py
+COPY duck_lakehouse/data_generator/v5_fields.py /app/v5_fields.py
+COPY duck_lakehouse/mesh_simulator/mesh_simulator.py /app/mesh_simulator_lib.py
+COPY scripts/run_all.sh /app/run_all.sh
+
+RUN chmod +x /app/run_all.sh
+
+CMD ["/app/run_all.sh"]

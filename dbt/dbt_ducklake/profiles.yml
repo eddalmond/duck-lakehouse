@@ -1,0 +1,16 @@
+ducklake_vaccinations:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ":memory:"
+      schema: main
+      extensions:
+        - ducklake
+      attach:
+        - path: "ducklake:{{ env_var('DUCKLAKE_CATALOG', 'duck_lakehouse/ducklake/catalog/vaccination_lake.ducklake') }}"
+          alias: vaccination_lake
+          is_ducklake: true
+          options:
+            DATA_PATH: "{{ env_var('DUCKLAKE_DATA', 'duck_lakehouse/ducklake/data') }}"
+            OVERRIDE_DATA_PATH: true

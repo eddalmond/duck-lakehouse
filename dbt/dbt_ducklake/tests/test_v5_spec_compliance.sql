@@ -1,0 +1,1 @@
+{{ test_v5_action_flag_values(ref('stg_vaccinations'), 'action_flag') }}

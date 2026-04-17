@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckLake Dashboard - NHS Vaccination Pipeline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-800">DuckLake Dashboard</h1>
+                    <p class="text-slate-500">NHS Vaccination v5 Pipeline Orchestrator</p>
+                </div>
+            </div>
+            
+            <!-- Global Actions -->
+            <div class="flex gap-3 mb-6">
+                <button id="runAllBtn" class="btn-primary">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Run Full Pipeline
+                </button>
+                <button id="cleanBtn" class="btn-secondary">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Clean All Data
+                </button>
+            </div>
+        </header>
+
+        <!-- Pipeline Visualization -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <!-- Stage 1: Generate -->
+            <div class="pipeline-stage" id="stage-generate">
+                <div class="stage-header">
+                    <div class="stage-icon bg-violet-100 text-violet-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <span class="stage-number">1</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">Generate Data</h3>
+                <p class="text-xs text-slate-500 mb-3">Create v5 CSV files</p>
+                <div class="stage-status idle" id="status-generate">Idle</div>
+                <button class="stage-btn" onclick="runStage('generate')">Run</button>
+            </div>
+
+            <!-- Stage 2: MESH -->
+            <div class="pipeline-stage" id="stage-mesh">
+                <div class="stage-header">
+                    <div class="stage-icon bg-amber-100 text-amber-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
+                    </div>
+                    <span class="stage-number">2</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">MESH Simulator</h3>
+                <p class="text-xs text-slate-500 mb-3">Inbox → Processing → Archive</p>
+                <div class="stage-status idle" id="status-mesh">Idle</div>
+                <button class="stage-btn" onclick="runStage('mesh')">Run</button>
+            </div>
+
+            <!-- Stage 3: Init -->
+            <div class="pipeline-stage" id="stage-init">
+                <div class="stage-header">
+                    <div class="stage-icon bg-emerald-100 text-emerald-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                        </svg>
+                    </div>
+                    <span class="stage-number">3</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">Init DuckLake</h3>
+                <p class="text-xs text-slate-500 mb-3">Create catalog & schemas</p>
+                <div class="stage-status idle" id="status-init">Idle</div>
+                <button class="stage-btn" onclick="runStage('init')">Run</button>
+            </div>
+
+            <!-- Stage 4: Ingest -->
+            <div class="pipeline-stage" id="stage-ingest">
+                <div class="stage-header">
+                    <div class="stage-icon bg-blue-100 text-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                    </div>
+                    <span class="stage-number">4</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">Ingest Data</h3>
+                <p class="text-xs text-slate-500 mb-3">CSV → Staging tables</p>
+                <div class="stage-status idle" id="status-ingest">Idle</div>
+                <button class="stage-btn" onclick="runStage('ingest')">Run</button>
+            </div>
+
+            <!-- Stage 5: dbt -->
+            <div class="pipeline-stage" id="stage-dbt">
+                <div class="stage-header">
+                    <div class="stage-icon bg-cyan-100 text-cyan-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
+                    </div>
+                    <span class="stage-number">5</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">dbt Transform</h3>
+                <p class="text-xs text-slate-500 mb-3">Staging → Marts</p>
+                <div class="stage-status idle" id="status-dbt">Idle</div>
+                <button class="stage-btn" onclick="runStage('dbt')">Run Models</button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Console Output -->
+            <div class="card">
+                <div class="card-header">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"/>
+                    </svg>
+                    <h2>Console Output</h2>
+                    <button class="text-xs text-slate-400 hover:text-slate-600" onclick="clearConsole()">Clear</button>
+                </div>
+                <div class="console-output" id="console"></div>
+            </div>
+
+        </div>
+
+        <!-- Data Explorer -->
+        <div class="explorer-card mt-6">
+            <div class="explorer-header">
+                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                </svg>
+                <h2>Data Explorer</h2>
+                <div class="explorer-controls">
+                    <div class="explorer-tabs">
+                        <button class="explorer-tab active" onclick="switchExplorerTab('table')">Table View</button>
+                        <button class="explorer-tab" onclick="switchExplorerTab('duckui')">DuckDB UI</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table View Tab -->
+            <div id="explorer-tab-table" class="explorer-tab-content active">
+                <div class="explorer-controls" style="padding: 0.5rem 1.25rem; border-bottom: 1px solid #E2E8F0;">
+                    <select id="explorer-table-select" class="explorer-select" onchange="loadExplorerData()">
+                        <option value="">Choose a table...</option>
+                    </select>
+                    <span class="explorer-info" id="explorer-info"></span>
+                </div>
+                <div class="explorer-table-wrap" id="explorer-table-wrap">
+                    <table class="data-table" id="explorer-table">
+                        <thead><tr><td class="empty-state">Select a table to explore DuckDB data</td></tr></thead>
+                    </table>
+                </div>
+                <div class="explorer-footer">
+                    <div class="row-counts" id="explorer-footer-counts">
+                        <span>Staging: <b id="staging-count">-</b> rows</span>
+                        <span>Marts: <b id="marts-count">-</b> rows</span>
+                    </div>
+                    <div id="explorer-footer-detail"></div>
+                </div>
+            </div>
+
+            <!-- DuckDB UI Tab -->
+            <div id="explorer-tab-duckui" class="explorer-tab-content" style="display:none;">
+                <div class="duckui-launch" id="duckui-launch">
+                    <p class="text-sm text-slate-600 mb-3">Launch the full DuckDB UI with your DuckLake data pre-attached. Run SQL queries, browse schemas, and explore column statistics visually.</p>
+                    <button class="btn-primary" onclick="startDuckDBUI()" id="duckui-start-btn">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Launch DuckDB UI
+                    </button>
+                    <p class="text-xs text-slate-400 mt-2" id="duckui-status-text">Not running</p>
+                </div>
+                <div class="duckui-frame-wrap" id="duckui-frame-wrap" style="display:none;">
+                    <iframe id="duckui-iframe" src="" style="width:100%; height:600px; border:none;"></iframe>
+                    <div class="explorer-footer">
+                        <span class="text-xs text-slate-400">DuckDB UI running at <a href="http://localhost:4213" target="_blank" class="text-blue-500 hover:underline">localhost:4213</a></span>
+                        <button class="text-xs text-slate-400 hover:text-red-500" onclick="openDuckDBUI()">Open in new tab</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-sm text-slate-400">
+            DuckLake NHS Vaccination Pipeline · Powered by DuckDB & dbt
+        </footer>
+    </div>
+
+    <script src="static/app.js?v=2"></script>
+</body>
+</html>
