@@ -69,13 +69,18 @@ def ingest_files(
             archive_dir = "/app/mesh_simulator/archive"
         else:
             archive_dir = "duck_lakehouse/mesh_simulator/archive"
+    # Check both archive and inbox directories
     archive = Path(archive_dir)
-    if not archive.exists():
-        print(f"No archive directory: {archive}")
-        return 0
-
+    inbox_dir = archive.parent / "inbox"
     csv_files = sorted(archive.glob("*.csv"))
-    if not csv_files:
+    inbox_files = sorted(inbox_dir.glob("*.csv")) if inbox_dir.exists() else []
+    if not csv_files and inbox_files:
+        print(f"No CSV files in archive, found {len(inbox_files)} in inbox — processing from inbox")
+        csv_files = inbox_files
+    elif not csv_files and not inbox_files:
+        print("No CSV files in archive or inbox")
+        return 0
+    elif not csv_files:
         print("No CSV files in archive")
         return 0
 
