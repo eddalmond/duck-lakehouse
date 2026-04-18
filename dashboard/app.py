@@ -120,8 +120,10 @@ def _refresh_table_cache():
             tables = []
             for fq_name in names:
                 try:
+                    # Quote schema.table to handle dotted names correctly
+                    schema, table = fq_name.split(".", 1)
                     count = conn.execute(
-                        f"SELECT COUNT(*) FROM vaccination_lake.{fq_name}"
+                        f'SELECT COUNT(*) FROM vaccination_lake."{schema}"."{table}"'
                     ).fetchone()[0]
                 except Exception:
                     count = None
