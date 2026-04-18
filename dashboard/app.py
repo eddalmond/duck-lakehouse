@@ -583,8 +583,10 @@ def run_stage(stage):
                    f"catalog_path='{CATALOG_PATH}', data_path='{DATA_PATH}')"]
         elif stage == "dbt":
             dbt_target = os.environ.get("DBT_TARGET", "dev")
-            cmd = ["dbt", "run", "--profiles-dir", str(DBT_DIR),
-                   "--project-dir", str(DBT_DIR), "--target", dbt_target]
+            cmd = ["bash", "-c",
+                   f"dbt deps --project-dir {DBT_DIR} && "
+                   f"dbt run --profiles-dir {DBT_DIR} "
+                   f"--project-dir {DBT_DIR} --target {dbt_target}"]
         else:
             yield f"data: {json.dumps({'error': 'Unknown stage'})}\n\n"
             return
