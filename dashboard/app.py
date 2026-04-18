@@ -570,8 +570,10 @@ def run_stage(stage):
                    "--output", str(INBOX_DIR),
                    "--records", "100", "--type", "all"]
         elif stage == "mesh":
+            # Use ARCHIVE_DIR's parent as base-dir so generated files
+            # land where ingest expects them (respects MESH_ARCHIVE_DIR env var)
             cmd = [sys.executable, "-m", "duck_lakehouse.mesh_simulator",
-                   "--base-dir", str(MESH_DIR), "--once"]
+                   "--base-dir", str(ARCHIVE_DIR.parent), "--once"]
         elif stage == "init":
             cmd = [sys.executable, "-c",
                    f"from duck_lakehouse.ducklake.init_ducklake import main; main("
