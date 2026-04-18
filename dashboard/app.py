@@ -718,6 +718,26 @@ def debug_start_ui():
         return jsonify({"status": "error", "message": str(e)})
 
 
+@app.route("/api/debug/duckdb-version")
+def debug_duckdb_version():
+    """Run duckdb --version and return output."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["duckdb", "--version"],
+            capture_output=True, text=True, timeout=5
+        )
+        return jsonify({
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "timeout"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 @app.route("/api/duckdb-ui/status")
 def duckdb_ui_status():
     """Check if DuckDB UI is running."""
