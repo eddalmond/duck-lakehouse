@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """
 DuckLake Dashboard - Flask backend for pipeline visualization and control
+
+Concurrency strategy for DuckDB:
+  DuckDB does not support concurrent access to the same .ducklake catalog.
+  Even read-only ATTACHes take a shared file lock that blocks writers.
+
+  Our approach:
+  - Read queries use ATTACH with READ_ONLY flag to minimise lock contention.
+  - A _write_in_progress Event signals when a write operation (init/ingest/dbt)
+    is running. Read queries check this and return a "busy" response rather than
+    competing for the file lock.
+  - Write operations acquire _pipeline_lock to run exclusively.
+  - All connections are short-lived: open → query → close.
+  - Frontend polling handles "busy" responses gracefully.
 """
 
 import json
@@ -10,7 +23,6 @@ import sys
 import threading
 from datetime import datetime
 from pathlib import Path
-from queue import Queue
 
 import duckdb
 from flask import Flask, Response, jsonify, request, send_from_directory
@@ -24,10 +36,20 @@ MESH_DIR = BASE_DIR / "duck_lakehouse" / "mesh_simulator"
 DBT_DIR = BASE_DIR / "dbt" / "dbt_ducklake"
 DUCKLAKE_DIR = BASE_DIR / "duck_lakehouse" / "ducklake"
 
-ARCHIVE_DIR = MESH_DIR / "archive"
-INBOX_DIR = MESH_DIR / "inbox"
-CATALOG_PATH = DUCKLAKE_DIR / "catalog" / "vaccination_lake.ducklake"
-DATA_PATH = DUCKLAKE_DIR / "data"
+ARCHIVE_DIR = Path(os.environ.get("MESH_ARCHIVE_DIR", str(ARCHIVE_DIR)))
+INBOX_DIR = Path(os.environ.get("MESH_INBOX_DIR", str(INBOX_DIR)))
+PROCESSING_DIR = Path(os.environ.get("MESH_PROCESSING_DIR", str(PROCESSING_DIR)))
+LOGS_DIR = Path(os.environ.get("MESH_LOGS_DIR", str(LOGS_DIR)))
+CATALOG_PATH = Path(os.environ.get("DUCKLAKE_CATALOG", str(CATALOG_DIR / "vaccination_lake.ducklake")))
+DATA_PATH = Path(os.environ.get("DUCKLAKE_DATA", str(DATA_DIR)))
+CATALOG_DIR = CATALOG_PATH.parent
+DATA_DIR = DATA_PATH
+
+# ---- Concurrency control ----
+# _pipeline_lock: serialises write operations (init/ingest/dbt)
+# _write_in_progress: Event set while a write op runs; reads check and back off
+_pipeline_lock = threading.Lock()
+_write_in_progress = threading.Event()
 
 status = {
     "generate": {"state": "idle", "output": [], "last_run": None},
@@ -40,11 +62,59 @@ status = {
 cached_tables = []
 
 
+def get_ducklake_conn(read_only=False):
+    """Open a short-lived connection to the DuckLake catalog.
+
+    read_only=True uses ATTACH ... (READ_ONLY) which takes a shared lock
+    instead of an exclusive lock. This still blocks writers, but is safer
+    for concurrent reads.
+
+    For write operations, use read_only=False (default).
+    """
+    conn = duckdb.connect()
+    conn.execute("INSTALL ducklake")
+    conn.execute("LOAD ducklake")
+    if read_only:
+        conn.execute(
+            f"ATTACH 'ducklake:{CATALOG_PATH}' "
+            f"AS vaccination_lake (READ_ONLY, DATA_PATH '{DATA_PATH}')"
+        )
+    else:
+        conn.execute(
+            f"ATTACH 'ducklake:{CATALOG_PATH}' "
+            f"AS vaccination_lake (DATA_PATH '{DATA_PATH}', OVERRIDE_DATA_PATH true)"
+        )
+    conn.execute("USE vaccination_lake")
+    return conn
+
+
+def _get_read_conn():
+    """Get a read-only connection, or None if DB is busy or catalog missing.
+
+    Returns (conn, busy_flag). If busy_flag is True, conn is None.
+    Caller MUST close conn when done.
+    """
+    if _write_in_progress.is_set():
+        return None, True
+    if not CATALOG_PATH.exists():
+        return None, False
+    try:
+        return get_ducklake_conn(read_only=True), False
+    except Exception:
+        # Fallback: try write-mode connection (single worker, low traffic)
+        try:
+            return get_ducklake_conn(read_only=False), False
+        except Exception:
+            return None, False
+
+
 def _refresh_table_cache():
     """Populate cached_tables from DuckLake metadata."""
     global cached_tables
     try:
-        conn = get_ducklake_conn()
+        conn, busy = _get_read_conn()
+        if conn is None:
+            return
         try:
             names = _discover_tables(conn)
             tables = []
@@ -62,24 +132,32 @@ def _refresh_table_cache():
     except Exception:
         pass
 
-def get_ducklake_conn():
-    conn = duckdb.connect()
-    conn.execute("INSTALL ducklake")
-    conn.execute("LOAD ducklake")
-    conn.execute(
-        f"ATTACH 'ducklake:{CATALOG_PATH}' "
-        f"AS vaccination_lake (DATA_PATH '{DATA_PATH}', OVERRIDE_DATA_PATH true)"
-    )
-    conn.execute("USE vaccination_lake")
-    return conn
-
 
 def run_command(cmd, cwd=None, stage=None):
-    """Run a command and stream output via SSE."""
+    """Run a command and stream output via SSE.
+
+    For write operations (init/ingest/dbt), acquires the pipeline lock
+    and sets _write_in_progress so reads back off.
+    """
+    write_stages = {"init", "ingest", "dbt"}
+    needs_lock = stage in write_stages
+
+    if needs_lock:
+        if not _pipeline_lock.acquire(blocking=False):
+            def stream():
+                msg = f"Cannot run {stage}: another write operation is in progress. Please wait."
+                status[stage]["state"] = "error"
+                status[stage]["output"] = [msg]
+                yield f"data: {json.dumps({'stage': stage, 'error': msg})}\n\n"
+                yield f"data: {json.dumps({'stage': stage, 'done': True, 'exit_code': 1})}\n\n"
+            return stream
+
+        _write_in_progress.set()
+
     status[stage]["state"] = "running"
     status[stage]["output"] = []
     status[stage]["last_run"] = datetime.now().isoformat()
-    
+
     def stream():
         try:
             process = subprocess.Popen(
@@ -91,11 +169,11 @@ def run_command(cmd, cwd=None, stage=None):
                 bufsize=1,
                 env={**os.environ, "PYTHONUNBUFFERED": "1"}
             )
-            
+
             for line in process.stdout:
                 status[stage]["output"].append(line.rstrip())
                 yield f"data: {json.dumps({'stage': stage, 'line': line.rstrip()})}\n\n"
-            
+
             process.wait()
             if process.returncode == 0:
                 status[stage]["state"] = "success"
@@ -104,47 +182,62 @@ def run_command(cmd, cwd=None, stage=None):
             else:
                 status[stage]["state"] = "error"
             yield f"data: {json.dumps({'stage': stage, 'done': True, 'exit_code': process.returncode})}\n\n"
-            
+
         except Exception as e:
             status[stage]["state"] = "error"
             yield f"data: {json.dumps({'stage': stage, 'error': str(e)})}\n\n"
-    
+        finally:
+            if needs_lock:
+                _write_in_progress.clear()
+                _pipeline_lock.release()
+
     return stream
+
+
+# ---- Routes ----
 
 @app.route("/")
 def index():
     return send_from_directory("static", "index.html")
 
+
 @app.route("/static/<path:path>")
 def static_files(path):
     return send_from_directory("static", path)
 
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/status")
 def get_status():
     return jsonify(status)
+
 
 @app.route("/api/files/<path:stage>")
 def get_files(stage):
     """List files for a given stage."""
     try:
         if stage == "inbox":
-            path = MESH_DIR / "inbox"
+            path = INBOX_DIR
         elif stage == "processing":
-            path = MESH_DIR / "processing"
+            path = PROCESSING_DIR
         elif stage == "archive":
-            path = MESH_DIR / "archive"
+            path = ARCHIVE_DIR
         elif stage == "logs":
-            path = MESH_DIR / "logs"
+            path = LOGS_DIR
         elif stage == "catalog":
-            path = DUCKLAKE_DIR / "catalog"
+            path = CATALOG_DIR
         elif stage == "data":
-            path = DUCKLAKE_DIR / "data"
+            path = DATA_DIR
         else:
             return jsonify({"error": "Unknown stage"}), 400
-        
+
         if not path.exists():
             return jsonify({"files": []})
-        
+
         files = []
         for f in sorted(path.iterdir()):
             if f.is_file():
@@ -158,25 +251,26 @@ def get_files(stage):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/api/preview/<stage>")
 def preview_data(stage):
     """Preview data from various stages."""
     try:
         if stage == "csv_sample":
-            archive = MESH_DIR / "archive"
+            archive = ARCHIVE_DIR
             csv_files = sorted(archive.glob("*.csv"))
-            inbox_files = sorted((MESH_DIR / "inbox").glob("*.csv"))
+            inbox_files = sorted((INBOX_DIR).glob("*.csv"))
             all_files = inbox_files + csv_files
             if not all_files:
                 return jsonify({"headers": [], "rows": [], "source": "No CSV files"})
             csv_file = all_files[0]
-            
+
             with open(csv_file, "r", encoding="utf-8") as f:
                 content = f.read()
                 lines = content.strip().split("\r\n") if "\r\n" in content else content.strip().split("\n")
                 if not lines:
                     return jsonify({"headers": [], "rows": [], "source": str(csv_file.name)})
-                
+
                 import re
                 field_re = re.compile(r'"([^"]*)"')
                 headers = [m.group(1) for m in field_re.finditer(lines[0])]
@@ -185,16 +279,20 @@ def preview_data(stage):
                     if line.strip():
                         values = [m.group(1) for m in field_re.finditer(line)]
                         rows.append(dict(zip(headers, values)))
-                
+
                 return jsonify({
                     "headers": headers[:10],
                     "rows": [{k: v for k, v in row.items() if k in headers[:10]} for row in rows],
                     "source": csv_file.name
                 })
-        
+
         elif stage == "staging":
+            conn, busy = _get_read_conn()
+            if conn is None:
+                if busy:
+                    return jsonify({"error": "Database is busy — a write operation is in progress", "busy": True})
+                return jsonify({"headers": [], "rows": []})
             try:
-                conn = get_ducklake_conn()
                 tables = [t for t in _discover_tables(conn) if "stg_" in t]
                 result = []
                 columns = []
@@ -204,22 +302,25 @@ def preview_data(stage):
                         columns = [desc[0] for desc in conn.description]
                     except Exception:
                         pass
-                
+
                 rows = []
                 for row in result:
                     row_dict = {}
                     for i, col in enumerate(columns[:8]):
                         row_dict[col] = str(row[i])[:50] if row[i] is not None else None
                     rows.append(row_dict)
-                
-                conn.close()
+
                 return jsonify({"headers": columns[:8], "rows": rows})
-            except Exception as e:
-                return jsonify({"error": str(e)})
-        
+            finally:
+                conn.close()
+
         elif stage == "marts":
+            conn, busy = _get_read_conn()
+            if conn is None:
+                if busy:
+                    return jsonify({"error": "Database is busy — a write operation is in progress", "busy": True})
+                return jsonify({"headers": [], "rows": []})
             try:
-                conn = get_ducklake_conn()
                 tables = [t for t in _discover_tables(conn) if "fct_" in t]
                 result = []
                 columns = []
@@ -229,22 +330,25 @@ def preview_data(stage):
                         columns = [desc[0] for desc in conn.description]
                     except Exception:
                         pass
-                
+
                 rows = []
                 for row in result:
                     row_dict = {}
                     for i, col in enumerate(columns[:8]):
                         row_dict[col] = str(row[i])[:50] if row[i] is not None else None
                     rows.append(row_dict)
-                
-                conn.close()
+
                 return jsonify({"headers": columns[:8], "rows": rows})
-            except Exception as e:
-                return jsonify({"error": str(e)})
-        
+            finally:
+                conn.close()
+
         elif stage == "row_counts":
+            conn, busy = _get_read_conn()
+            if conn is None:
+                if busy:
+                    return jsonify({"staging": 0, "marts": 0, "busy": True})
+                return jsonify({"staging": 0, "marts": 0})
             try:
-                conn = get_ducklake_conn()
                 staging_count = 0
                 marts_count = 0
                 for tname in _discover_tables(conn):
@@ -258,24 +362,28 @@ def preview_data(stage):
                             marts_count = conn.execute(f"SELECT COUNT(*) FROM vaccination_lake.{tname}").fetchone()[0]
                         except Exception:
                             pass
-                conn.close()
                 return jsonify({"staging": staging_count, "marts": marts_count})
-            except:
-                return jsonify({"staging": 0, "marts": 0})
-        
+            finally:
+                conn.close()
+
         return jsonify({"error": "Unknown preview stage"}), 400
-        
+
     except Exception as e:
+        if "lock" in str(e).lower() or "conflict" in str(e).lower():
+            if stage == "row_counts":
+                return jsonify({"staging": 0, "marts": 0, "busy": True})
+            return jsonify({"error": "Database is busy", "busy": True})
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/sample-files")
 def list_sample_files():
     """List all CSV files in inbox with summary info."""
     try:
-        inbox = MESH_DIR / "inbox"
-        archive = MESH_DIR / "archive"
+        inbox = INBOX_DIR
+        archive = ARCHIVE_DIR
         results = []
-        
+
         for csv_dir, location in [(inbox, "inbox"), (archive, "archive")]:
             if not csv_dir.exists():
                 continue
@@ -288,7 +396,7 @@ def list_sample_files():
                             lines_count += 1
                 except Exception:
                     pass
-                
+
                 results.append({
                     "name": f.name,
                     "location": location,
@@ -297,16 +405,17 @@ def list_sample_files():
                     "vaccine_type": vaccine_type,
                     "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
                 })
-        
+
         return jsonify({"files": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/sample-file/<path:filename>")
 def preview_sample_file(filename):
     """Preview a specific CSV file from inbox or archive."""
     try:
-        for csv_dir in [(MESH_DIR / "inbox", "inbox"), (MESH_DIR / "archive", "archive")]:
+        for csv_dir in [(INBOX_DIR, "inbox"), (ARCHIVE_DIR, "archive")]:
             csv_dir_path, location = csv_dir
             filepath = csv_dir_path / filename
             if filepath.exists() and filepath.suffix == ".csv":
@@ -315,7 +424,7 @@ def preview_sample_file(filename):
                     lines = content.strip().split("\r\n") if "\r\n" in content else content.strip().split("\n")
                     if not lines:
                         return jsonify({"headers": [], "rows": [], "total_rows": 0, "source": filename, "location": location})
-                    
+
                     import re
                     field_re = re.compile(r'"([^"]*)"')
                     headers = [m.group(1) for m in field_re.finditer(lines[0])]
@@ -324,7 +433,7 @@ def preview_sample_file(filename):
                         if line.strip():
                             values = [m.group(1) for m in field_re.finditer(line)]
                             rows.append(dict(zip(headers, values)))
-                    
+
                     return jsonify({
                         "headers": headers,
                         "rows": rows,
@@ -333,10 +442,11 @@ def preview_sample_file(filename):
                         "location": location,
                         "size": filepath.stat().st_size,
                     })
-        
+
         return jsonify({"error": f"File not found: {filename}"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 EXCLUDE_SCHEMAS = {"main", "information_schema", "pg_catalog"}
 EXCLUDE_PREFIXES = ("ducklake_", "__ducklake_metadata")
@@ -347,7 +457,9 @@ def _discover_tables(conn=None):
     own_conn = conn is None
     if own_conn:
         try:
-            conn = get_ducklake_conn()
+            conn, busy = _get_read_conn()
+            if conn is None:
+                return []
         except Exception:
             return []
     try:
@@ -387,6 +499,7 @@ def list_tables():
         _refresh_table_cache()
     return jsonify({"tables": cached_tables})
 
+
 @app.route("/api/query/<path:table_name>")
 def query_table(table_name):
     """Query a DuckLake table with pagination support."""
@@ -394,10 +507,12 @@ def query_table(table_name):
     if table_name not in allowed:
         return jsonify({"error": f"Table not found: {table_name}"}), 400
 
-    try:
-        conn = get_ducklake_conn()
-    except Exception:
+    conn, busy = _get_read_conn()
+    if conn is None:
+        if busy:
+            return jsonify({"error": "Database is busy — a write operation is in progress", "busy": True}), 503
         return jsonify({"error": "Cannot connect to DuckLake"}), 500
+
     try:
         limit = int(request.args.get("limit", 50))
         offset = int(request.args.get("offset", 0))
@@ -433,6 +548,8 @@ def query_table(table_name):
             "offset": offset,
         })
     except Exception as e:
+        if "lock" in str(e).lower() or "conflict" in str(e).lower():
+            return jsonify({"error": "Database is busy", "busy": True}), 503
         return jsonify({"error": str(e)})
     finally:
         try:
@@ -440,13 +557,14 @@ def query_table(table_name):
         except Exception:
             pass
 
+
 @app.route("/api/run/<stage>")
 def run_stage(stage):
     """Stream output from running a pipeline stage."""
     def generate():
         if stage == "generate":
-            cmd = [sys.executable, "-m", "duck_lakehouse.data_generator", 
-                   "--output", str(INBOX_DIR), 
+            cmd = [sys.executable, "-m", "duck_lakehouse.data_generator",
+                   "--output", str(INBOX_DIR),
                    "--records", "100", "--type", "all"]
         elif stage == "mesh":
             cmd = [sys.executable, "-m", "duck_lakehouse.mesh_simulator",
@@ -461,62 +579,66 @@ def run_stage(stage):
                    f"ingest_files(archive_dir='{ARCHIVE_DIR}', "
                    f"catalog_path='{CATALOG_PATH}', data_path='{DATA_PATH}')"]
         elif stage == "dbt":
+            dbt_target = os.environ.get("DBT_TARGET", "dev")
             cmd = ["dbt", "run", "--profiles-dir", str(DBT_DIR),
-                   "--project-dir", str(DBT_DIR)]
+                   "--project-dir", str(DBT_DIR), "--target", dbt_target]
         else:
             yield f"data: {json.dumps({'error': 'Unknown stage'})}\n\n"
             return
-        
+
         yield from run_command(cmd, cwd=str(BASE_DIR), stage=stage)()
-    
+
     return Response(generate(), mimetype="text/event-stream")
+
 
 @app.route("/api/run/dbt-test")
 def run_dbt_test():
     """Run dbt tests."""
     def generate():
+        dbt_target = os.environ.get("DBT_TARGET", "dev")
         cmd = ["dbt", "test", "--profiles-dir", str(DBT_DIR),
-               "--project-dir", str(DBT_DIR)]
+               "--project-dir", str(DBT_DIR), "--target", dbt_target]
         yield from run_command(cmd, cwd=str(BASE_DIR), stage="dbt")()
-    
+
     return Response(generate(), mimetype="text/event-stream")
+
 
 @app.route("/api/clean", methods=["POST"])
 def clean_all():
     """Clean generated data."""
     try:
         import shutil
-        
+
         # Clean MESH directories
-        for subdir in ["inbox", "processing", "archive"]:
-            path = MESH_DIR / subdir
+        for path in [INBOX_DIR, PROCESSING_DIR, ARCHIVE_DIR]:
             if path.exists():
                 for f in path.glob("*.csv"):
                     f.unlink()
-        
+
         # Clean logs
-        logs = MESH_DIR / "logs"
+        logs = LOGS_DIR
         if logs.exists():
             for f in logs.glob("*.jsonl"):
                 f.unlink()
-        
+
         # Clean DuckLake catalog and data
-        catalog = DUCKLAKE_DIR / "catalog"
+        catalog = CATALOG_DIR
         if catalog.exists():
             shutil.rmtree(catalog)
-        data = DUCKLAKE_DIR / "data"
+        data = DATA_DIR
         if data.exists():
             shutil.rmtree(data)
-        
+
         # Reset status
         for key in status:
             status[key]["state"] = "idle"
             status[key]["output"] = []
         cached_tables.clear()
-        
+
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 _duckdb_ui_process = None
 
@@ -593,12 +715,6 @@ def duckdb_ui_proxy(subpath=""):
         return Response(content, status=resp.status_code, headers=out_headers)
     except Exception as e:
         return jsonify({"error": str(e)}), 502
-
-
-@app.route("/health")
-def health_check():
-    """Health check endpoint for Railway."""
-    return jsonify({"status": "healthy"})
 
 
 if __name__ == "__main__":

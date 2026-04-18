@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r /app/dashboard/requirements.txt
 # Install additional dependencies
 RUN pip install --no-cache-dir \
     duckdb \
+    dbt-duckdb \
     pandas \
     numpy
 
@@ -22,15 +23,25 @@ RUN pip install --no-cache-dir \
 COPY . /app/
 
 # Set environment variables
+# These can be overridden by Railway env vars
 ENV PYTHONPATH=/app
-ENV DUCKLAKE_CATALOG=/app/duck_lakehouse/ducklake/catalog/vaccination_lake.ducklake
-ENV DUCKLAKE_DATA=/app/duck_lakehouse/ducklake/data
+ENV DUCKLAKE_CATALOG=/app/data/catalog/vaccination_lake.ducklake
+ENV DUCKLAKE_DATA=/app/data/parquet
+ENV MESH_ARCHIVE_DIR=/app/data/mesh/archive
 ENV DUCKLAKE_HOST=0.0.0.0
 ENV DUCKLAKE_PORT=8765
 ENV FLASK_ENV=production
 
-# Create required directories
-RUN mkdir -p /app/duck_lakehouse/ducklake/catalog \
+# Create required directories for both local and Railway paths
+RUN mkdir -p \
+    /app/data/catalog \
+    /app/data/parquet \
+    /app/data/mesh/inbox \
+    /app/data/mesh/archive \
+    /app/data/mesh/processing \
+    /app/data/mesh/logs \
+    /app/data/mesh/error \
+    /app/duck_lakehouse/ducklake/catalog \
     /app/duck_lakehouse/ducklake/data \
     /app/duck_lakehouse/mesh_simulator/inbox \
     /app/duck_lakehouse/mesh_simulator/archive \
@@ -38,11 +49,11 @@ RUN mkdir -p /app/duck_lakehouse/ducklake/catalog \
     /app/duck_lakehouse/mesh_simulator/logs \
     /app/duck_lakehouse/mesh_simulator/error
 
-# Initialize the DuckLake catalog at build time
-RUN python3 -c "from duck_lakehouse.ducklake.init_ducklake import main; main()" || echo "Note: Catalog init may require runtime data"
+# Do NOT init catalog at build time — it should be done at runtime
+# to avoid stale locks and path mismatches
 
 # Expose the port
 EXPOSE 8765
 
-# Run the application
-CMD ["python3", "/app/dashboard/app.py"]
+# Use gunicorn for production (1 worker to avoid DuckDB lock conflicts)
+CMD ["gunicorn", "--bind", "0.0.0.0:8765", "--workers", "1", "--threads", "4", "--timeout", "120", "dashboard.app:app"]

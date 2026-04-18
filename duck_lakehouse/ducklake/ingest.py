@@ -7,6 +7,7 @@ and loads them into staging.stg_vaccinations.
 """
 
 import csv
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -59,10 +60,15 @@ def ingest_files(
     data_path: str = None,
     base_dir: str = None,
 ):
+    # Resolve archive dir from env or default
     if archive_dir is None:
-        # Default: mesh_simulator/archive relative to the package
-        pkg_dir = Path(__file__).resolve().parent.parent
-        archive_dir = str(pkg_dir / "mesh_simulator" / "archive")
+        env_archive = os.environ.get("MESH_ARCHIVE_DIR")
+        if env_archive:
+            archive_dir = env_archive
+        elif Path("/app/mesh_simulator/archive").exists():
+            archive_dir = "/app/mesh_simulator/archive"
+        else:
+            archive_dir = "duck_lakehouse/mesh_simulator/archive"
     archive = Path(archive_dir)
     if not archive.exists():
         print(f"No archive directory: {archive}")
@@ -79,7 +85,6 @@ def ingest_files(
         lake_name=lake_name,
         catalog_path=catalog_path,
         data_path=data_path,
-        base_dir=base_dir,
     )
 
     conn.execute(f"USE {lake_name}.staging")

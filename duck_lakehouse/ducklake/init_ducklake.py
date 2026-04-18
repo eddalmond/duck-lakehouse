@@ -13,6 +13,7 @@ Reference: https://ducklake.select/docs/
 """
 
 import duckdb
+import os
 from pathlib import Path
 
 
@@ -22,14 +23,32 @@ def init_ducklake(
     data_path: str = None,
     base_dir: str = None,
 ) -> duckdb.DuckDBPyConnection:
+    """Initialise a DuckLake warehouse.
+
+    Paths are resolved in this order:
+      1. Explicit catalog_path / data_path arguments
+      2. DUCKLAKE_CATALOG / DUCKLAKE_DATA environment variables
+      3. Auto-detect from /app/data (production) or duck_lakehouse/ducklake (local)
+    """
+    env_catalog = os.environ.get("DUCKLAKE_CATALOG")
+    env_data = os.environ.get("DUCKLAKE_DATA")
+
     if base_dir is None:
-        base = Path(__file__).resolve().parent
-    else:
-        base = Path(base_dir)
+        if env_catalog or Path("/app/data").exists():
+            base_dir = "/app/data"
+        else:
+            base_dir = "duck_lakehouse/ducklake"
+
+    base = Path(base_dir)
     if catalog_path is None:
-        catalog_path = str(base / "catalog" / f"{lake_name}.ducklake")
+        catalog_path = env_catalog or str(base / "catalog" / f"{lake_name}.ducklake")
     if data_path is None:
-        data_path = str(base / "data")
+        if env_data:
+            data_path = env_data
+        elif env_catalog or Path("/app/data").exists():
+            data_path = str(base / "parquet")
+        else:
+            data_path = str(base / "data")
 
     Path(catalog_path).parent.mkdir(parents=True, exist_ok=True)
     Path(data_path).mkdir(parents=True, exist_ok=True)

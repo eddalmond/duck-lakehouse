@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExplorerTables();
     setupEventListeners();
     
-    setInterval(loadRowCounts, 5000);
+    setInterval(loadRowCounts, 15000);
 });
 
 function setupEventListeners() {
@@ -166,6 +166,11 @@ async function loadRowCounts() {
     try {
         const response = await fetch(`${API_BASE}/api/preview/row_counts`);
         const data = await response.json();
+        
+        if (data.busy) {
+            // DB is busy with a write op — leave current counts, don't error
+            return;
+        }
         
         const stagingEl = document.getElementById('staging-count');
         const martsEl = document.getElementById('marts-count');
