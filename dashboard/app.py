@@ -683,6 +683,41 @@ def _start_duckdb_ui():
         return False
 
 
+@app.route("/api/debug/duckdb-cli")
+def debug_duckdb_cli():
+    """Check if duckdb CLI is installed."""
+    import subprocess
+    try:
+        result = subprocess.run(["which", "duckdb"], capture_output=True, text=True)
+        return jsonify({"exists": result.returncode == 0, "path": result.stdout.strip(), "error": result.stderr})
+    except Exception as e:
+        return jsonify({"exists": False, "error": str(e)})
+
+
+@app.route("/api/debug/start-ui")
+def debug_start_ui():
+    """Try to start DuckDB UI and capture errors."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["which", "duckdb"],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return jsonify({"status": "error", "message": "duckdb CLI not found", "which_output": result.stderr})
+
+        # Try running duckdb -ui directly
+        proc = subprocess.Popen(
+            ["duckdb", "-ui"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        return jsonify({"status": "started", "pid": proc.pid})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
 @app.route("/api/duckdb-ui/status")
 def duckdb_ui_status():
     """Check if DuckDB UI is running."""
