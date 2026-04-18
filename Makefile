@@ -1,4 +1,4 @@
-.PHONY: init generate send ingest dbt-run dbt-test smoke clean up down
+.PHONY: init generate send ingest dbt-run dbt-test smoke clean up down test
 
 DUCKLAKE_BASE ?= duck_lakehouse/ducklake
 MESH_DIR       ?= duck_lakehouse/mesh_simulator
@@ -44,6 +44,10 @@ clean:
 	rm -rf $(MESH_DIR)/processing/*.csv
 	rm -rf $(MESH_DIR)/inbox/*.csv
 	rm -rf $(MESH_DIR)/logs/*.jsonl
+
+test:
+	@echo "=== Running Python tests ==="
+	python -m pytest tests/ -v
 
 up:
 	docker compose up -d

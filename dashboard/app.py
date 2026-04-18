@@ -162,6 +162,7 @@ def run_command(cmd, cwd=None, stage=None):
     status[stage]["last_run"] = datetime.now().isoformat()
 
     def stream():
+        exit_code = 1
         try:
             process = subprocess.Popen(
                 cmd,
@@ -170,7 +171,7 @@ def run_command(cmd, cwd=None, stage=None):
                 cwd=cwd or str(BASE_DIR),
                 text=True,
                 bufsize=1,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"}
+                env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONPATH": str(BASE_DIR)}
             )
 
             for line in process.stdout:
@@ -589,7 +590,7 @@ def run_stage(stage):
                    f"ingest_files(archive_dir='{ARCHIVE_DIR}', "
                    f"catalog_path='{CATALOG_PATH}', data_path='{DATA_PATH}')"]
         elif stage == "dbt":
-            dbt_target = os.environ.get("DBT_TARGET", "dev")
+            dbt_target = os.environ.get("DBT_TARGET", "prod" if Path("/app").exists() else "dev")
             cmd = ["bash", "-c",
                    f"dbt deps --project-dir {DBT_DIR} && "
                    f"dbt run --profiles-dir {DBT_DIR} "
@@ -614,20 +615,27 @@ def execute_sql():
             return jsonify({"error": "No query provided"}), 400
         
         # Security: only allow SELECT statements
+        import re as _re
         query_upper = query.upper().strip()
-        forbidden_keywords = ["INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER", "TRUNCATE", "MERGE", "COPY"]
+        if not query_upper.startswith("SELECT") and not query_upper.startswith("WITH"):
+            return jsonify({"error": "Only SELECT queries are allowed. Queries must start with SELECT or WITH."}), 403
+        forbidden_keywords = ["INSERT ", "UPDATE ", "DELETE ", "CREATE ", "DROP ", "ALTER ", "TRUNCATE ", "MERGE ", "COPY "]
         for keyword in forbidden_keywords:
             if keyword in query_upper:
-                return jsonify({"error": f"Only SELECT queries are allowed. Found: {keyword}"}), 403
+                return jsonify({"error": f"Only SELECT queries are allowed. Found: {keyword.strip()}"}), 403
         
         # Check if write is in progress
         if _write_in_progress.is_set():
             return jsonify({"error": "Database is busy — a write operation is in progress", "busy": True}), 503
         
+        # Check if catalog exists before connecting
+        if not CATALOG_PATH.exists():
+            return jsonify({"error": "DuckLake catalog not found. Please run Init first.", "need_init": True}), 404
+        
         # Execute query
         conn, busy = _get_read_conn()
         if conn is None:
-            return jsonify({"error": "Database is busy" if busy else "Failed to connect", "busy": busy}), 503
+            return jsonify({"error": "Database is busy" if busy else "Failed to connect to DuckLake. Try running Init first.", "busy": busy}), 503
         
         try:
             result = conn.execute(query)

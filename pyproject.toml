@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "duck-lakehouse"
+version = "0.1.0"
+description = "NHS Vaccinations v5 DuckLake PoC"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=2.3.0",
+    "flask-cors>=4.0.0",
+    "duckdb>=1.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["duck_lakehouse*", "dashboard*"]
