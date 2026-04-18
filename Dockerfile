@@ -55,5 +55,6 @@ RUN mkdir -p \
 # Expose the port
 EXPOSE 8765
 
-# Use gunicorn for production (1 worker to avoid DuckDB lock conflicts)
-CMD ["gunicorn", "--bind", "0.0.0.0:8765", "--workers", "1", "--threads", "4", "--timeout", "120", "dashboard.app:app"]
+# Use Flask dev server with threaded=True (single process avoids DuckDB lock conflicts)
+# Gunicorn would also work with --workers 1 but Flask is simpler for a PoC
+CMD ["python3", "/app/dashboard/app.py"]
