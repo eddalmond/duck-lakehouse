@@ -8,9 +8,10 @@ ducklake_vaccinations:
         - ducklake
       attach:
         - path: "ducklake:duck_lakehouse/ducklake/catalog/vaccination_lake.ducklake"
-          name: vaccination_lake
+          alias: vaccination_lake
           options:
             data_path: "duck_lakehouse/ducklake/data"
+            override_data_path: true
     prod:
       type: duckdb
       path: /app/data/catalog/dbt_local.duckdb
@@ -18,6 +19,7 @@ ducklake_vaccinations:
         - ducklake
       attach:
         - path: "ducklake:/app/data/catalog/vaccination_lake.ducklake"
-          name: vaccination_lake
+          alias: vaccination_lake
           options:
             data_path: "/app/data/parquet"
+            override_data_path: true
