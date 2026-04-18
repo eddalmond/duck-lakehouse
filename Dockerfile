@@ -17,19 +17,19 @@ RUN pip install --no-cache-dir \
     duckdb \
     dbt-duckdb \
     pandas \
-    numpy
+    numpy \
+    gunicorn
 
 # Copy the application code
 COPY . /app/
 
 # Set environment variables
-# These can be overridden by Railway env vars
+# Railway injects PORT; use it for the healthcheck to work
 ENV PYTHONPATH=/app
 ENV DUCKLAKE_CATALOG=/app/data/catalog/vaccination_lake.ducklake
 ENV DUCKLAKE_DATA=/app/data/parquet
 ENV MESH_ARCHIVE_DIR=/app/data/mesh/archive
 ENV DUCKLAKE_HOST=0.0.0.0
-ENV DUCKLAKE_PORT=8765
 ENV FLASK_ENV=production
 
 # Create required directories for both local and Railway paths
@@ -52,9 +52,7 @@ RUN mkdir -p \
 # Do NOT init catalog at build time — it should be done at runtime
 # to avoid stale locks and path mismatches
 
-# Expose the port
-EXPOSE 8765
-
-# Use Flask dev server with threaded=True (single process avoids DuckDB lock conflicts)
-# Gunicorn would also work with --workers 1 but Flask is simpler for a PoC
-CMD ["python3", "/app/dashboard/app.py"]
+# Use gunicorn with PORT env var (Railway injects this)
+# 1 worker to avoid DuckDB lock conflicts, 4 threads for concurrent reads
+EXPOSE 8080
+CMD gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 120 dashboard.app:app
