@@ -160,12 +160,13 @@ def _nhs_number_checksum(d9: str) -> str:
 
 
 def generate_nhs_number() -> str:
+    """Generate a valid NHS number starting with 9 (test series reserved range)."""
     while True:
-        d9 = "".join(str(random.randint(0, 9)) for _ in range(9))
-        if d9[0] != "0":
-            result = _nhs_number_checksum(d9)
-            if result:
-                return result
+        # First digit is 9 (NHS test data series), remaining 8 digits random
+        d9 = "9" + "".join(str(random.randint(0, 9)) for _ in range(8))
+        result = _nhs_number_checksum(d9)
+        if result:
+            return result
 
 
 def _format_datetime(dt: datetime) -> str:
