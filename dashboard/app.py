@@ -175,21 +175,24 @@ def run_command(cmd, cwd=None, stage=None):
                 yield f"data: {json.dumps({'stage': stage, 'line': line.rstrip()})}\n\n"
 
             process.wait()
-            if process.returncode == 0:
+            exit_code = process.returncode
+            if exit_code == 0:
                 status[stage]["state"] = "success"
-                if stage in ("ingest", "dbt"):
-                    _refresh_table_cache()
             else:
                 status[stage]["state"] = "error"
-            yield f"data: {json.dumps({'stage': stage, 'done': True, 'exit_code': process.returncode})}\n\n"
+            yield f"data: {json.dumps({'stage': stage, 'done': True, 'exit_code': exit_code})}\n\n"
 
         except Exception as e:
+            exit_code = 1
             status[stage]["state"] = "error"
             yield f"data: {json.dumps({'stage': stage, 'error': str(e)})}\n\n"
         finally:
             if needs_lock:
                 _write_in_progress.clear()
                 _pipeline_lock.release()
+            # Refresh cache AFTER releasing the write lock so reads can succeed
+            if exit_code == 0 and stage in ("init", "ingest", "dbt"):
+                _refresh_table_cache()
 
     return stream
 
