@@ -36,12 +36,12 @@ MESH_DIR = BASE_DIR / "duck_lakehouse" / "mesh_simulator"
 DBT_DIR = BASE_DIR / "dbt" / "dbt_ducklake"
 DUCKLAKE_DIR = BASE_DIR / "duck_lakehouse" / "ducklake"
 
-ARCHIVE_DIR = Path(os.environ.get("MESH_ARCHIVE_DIR", str(ARCHIVE_DIR)))
-INBOX_DIR = Path(os.environ.get("MESH_INBOX_DIR", str(INBOX_DIR)))
-PROCESSING_DIR = Path(os.environ.get("MESH_PROCESSING_DIR", str(PROCESSING_DIR)))
-LOGS_DIR = Path(os.environ.get("MESH_LOGS_DIR", str(LOGS_DIR)))
-CATALOG_PATH = Path(os.environ.get("DUCKLAKE_CATALOG", str(CATALOG_DIR / "vaccination_lake.ducklake")))
-DATA_PATH = Path(os.environ.get("DUCKLAKE_DATA", str(DATA_DIR)))
+ARCHIVE_DIR = Path(os.environ.get("MESH_ARCHIVE_DIR", str(MESH_DIR / "archive")))
+INBOX_DIR = Path(os.environ.get("MESH_INBOX_DIR", str(MESH_DIR / "inbox")))
+PROCESSING_DIR = Path(os.environ.get("MESH_PROCESSING_DIR", str(MESH_DIR / "processing")))
+LOGS_DIR = Path(os.environ.get("MESH_LOGS_DIR", str(MESH_DIR / "logs")))
+CATALOG_PATH = Path(os.environ.get("DUCKLAKE_CATALOG", str(DUCKLAKE_DIR / "catalog" / "vaccination_lake.ducklake")))
+DATA_PATH = Path(os.environ.get("DUCKLAKE_DATA", str(DUCKLAKE_DIR / "data")))
 CATALOG_DIR = CATALOG_PATH.parent
 DATA_DIR = DATA_PATH
 
