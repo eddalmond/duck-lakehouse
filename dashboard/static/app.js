@@ -331,6 +331,9 @@ function switchExplorerTab(tab) {
     document.querySelectorAll('.explorer-tab-content').forEach(t => t.style.display = 'none');
     event.target.classList.add('active');
     document.getElementById(`explorer-tab-${tab}`).style.display = '';
+    if (tab === 'sqleditor' && !sqlSchemaCache) {
+        loadSqlSchema();
+    }
 }
 
 // DuckDB UI
@@ -382,6 +385,128 @@ function openDuckDBUI() {
 }
 
 // SQL Editor
+let sqlSchemaCache = null;
+
+async function loadSqlSchema() {
+    const panel = document.getElementById('sql-schema-content');
+    panel.innerHTML = '<p class="text-xs text-slate-400">Loading schema...</p>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/sql/schema`);
+        const data = await response.json();
+        
+        if (data.need_init) {
+            panel.innerHTML = '<p class="text-xs text-amber-600">Run Init first to create the DuckLake catalog.</p>';
+            return;
+        }
+        if (data.busy) {
+            panel.innerHTML = '<p class="text-xs text-amber-600">Database is busy...</p>';
+            return;
+        }
+        
+        sqlSchemaCache = data.schemas || {};
+        buildSchemaPanel(sqlSchemaCache);
+        buildExampleQueries(sqlSchemaCache);
+    } catch (e) {
+        panel.innerHTML = '<p class="text-xs text-red-500">Error loading schema</p>';
+    }
+}
+
+function buildSchemaPanel(schemas) {
+    const panel = document.getElementById('sql-schema-content');
+    if (!schemas || Object.keys(schemas).length === 0) {
+        panel.innerHTML = '<p class="text-xs text-slate-400">No tables found. Run the pipeline first.</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const [schema, tables] of Object.entries(schemas)) {
+        html += `<div style="margin-bottom: 0.75rem;">`;
+        html += `<div class="text-xs font-semibold text-slate-600" style="margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">${escapeHtml(schema)}</div>`;
+        for (const table of tables) {
+            html += `<div class="sql-schema-table" style="margin-left: 0.5rem; margin-bottom: 0.25rem;">`;
+            html += `<div class="text-xs font-medium text-blue-600 cursor-pointer hover:text-blue-800" onclick="insertTableRef('${escapeHtml(table.fq_name)}')" title="Click to insert table reference">${escapeHtml(table.name)}</div>`;
+            if (table.columns && table.columns.length > 0) {
+                html += `<div style="margin-left: 0.75rem;">`;
+                for (const col of table.columns) {
+                    html += `<div class="text-xs text-slate-400 cursor-pointer hover:text-slate-600" onclick="insertColRef('${escapeHtml(col.name)}')" title="${escapeHtml(col.type)}">${escapeHtml(col.name)} <span style="color:#94A3B8; font-size:0.65rem;">${escapeHtml(col.type)}</span></div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+        html += `</div>`;
+    }
+    panel.innerHTML = html;
+}
+
+function buildExampleQueries(schemas) {
+    const select = document.getElementById('sql-examples');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Example queries...</option>';
+    
+    const examples = [];
+    const tableNames = [];
+    for (const [schema, tables] of Object.entries(schemas)) {
+        for (const t of tables) {
+            tableNames.push(t.fq_name);
+        }
+    }
+    
+    if (tableNames.length > 0) {
+        const firstTable = tableNames[0];
+        const stgTable = tableNames.find(t => t.includes('stg_')) || firstTable;
+        const fctTable = tableNames.find(t => t.includes('fct_')) || firstTable;
+        
+        examples.push({label: 'Preview staging data', query: `SELECT * FROM ${stgTable}\nLIMIT 10;`});
+        examples.push({label: 'Count staging rows', query: `SELECT COUNT(*) AS total_rows\nFROM ${stgTable};`});
+        examples.push({label: 'Distinct vaccine products', query: `SELECT DISTINCT VACCINE_PRODUCT_TERM, VACCINE_MANUFACTURER\nFROM ${stgTable}\nLIMIT 20;`});
+        if (fctTable !== stgTable) {
+            examples.push({label: 'Preview mart data', query: `SELECT * FROM ${fctTable}\nLIMIT 10;`});
+            examples.push({label: 'Vaccinations by manufacturer', query: `SELECT vaccine_manufacturer, COUNT(*) AS count\nFROM ${fctTable}\nGROUP BY vaccine_manufacturer\nORDER BY count DESC;`});
+        }
+        examples.push({label: 'List all tables', query: `SELECT schema_name, table_name\nFROM duckdb_tables()\nWHERE database_name = 'vaccination_lake'\nORDER BY schema_name, table_name;`});
+        examples.push({label: 'Column info for a table', query: `SELECT column_name, data_type\nFROM information_schema.columns\nWHERE table_schema = '${stgTable.split('.')[1]}'\n  AND table_name = '${stgTable.split('.')[2]}'\nORDER BY ordinal_position;`});
+    } else {
+        examples.push({label: 'List all tables', query: `SELECT schema_name, table_name\nFROM duckdb_tables()\nWHERE database_name = 'vaccination_lake'\nORDER BY schema_name, table_name;`});
+    }
+    
+    for (const ex of examples) {
+        const opt = document.createElement('option');
+        opt.value = ex.query;
+        opt.textContent = ex.label;
+        select.appendChild(opt);
+    }
+}
+
+function loadSqlExample() {
+    const select = document.getElementById('sql-examples');
+    const editor = document.getElementById('sql-editor');
+    if (select.value) {
+        editor.value = select.value;
+        select.value = '';
+    }
+}
+
+function insertTableRef(fqName) {
+    const editor = document.getElementById('sql-editor');
+    const pos = editor.selectionStart;
+    const before = editor.value.substring(0, pos);
+    const after = editor.value.substring(pos);
+    editor.value = before + fqName + after;
+    editor.focus();
+}
+
+function insertColRef(colName) {
+    const editor = document.getElementById('sql-editor');
+    const pos = editor.selectionStart;
+    const before = editor.value.substring(0, pos);
+    const after = editor.value.substring(pos);
+    editor.value = before + colName + after;
+    editor.focus();
+}
+
 async function executeSql() {
     const editor = document.getElementById('sql-editor');
     const resultsDiv = document.getElementById('sql-results');

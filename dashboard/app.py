@@ -669,6 +669,54 @@ def execute_sql():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/sql/schema")
+def sql_schema():
+    """Return available schemas, tables, and columns for the SQL editor."""
+    if _write_in_progress.is_set():
+        return jsonify({"schemas": [], "busy": True})
+    if not CATALOG_PATH.exists():
+        return jsonify({"schemas": [], "need_init": True})
+    conn, busy = _get_read_conn()
+    if conn is None:
+        return jsonify({"schemas": []})
+    try:
+        tables = conn.execute("""
+            SELECT schema_name, table_name
+            FROM duckdb_tables()
+            WHERE database_name = 'vaccination_lake'
+        """).fetchall()
+        views = conn.execute("""
+            SELECT schema_name, view_name
+            FROM duckdb_views()
+            WHERE database_name = 'vaccination_lake'
+        """).fetchall()
+        schemas = {}
+        for schema, name in tables + views:
+            if schema in EXCLUDE_SCHEMAS:
+                continue
+            if any(schema.startswith(p) or name.startswith(p) for p in EXCLUDE_PREFIXES):
+                continue
+            if schema not in schemas:
+                schemas[schema] = []
+            try:
+                cols = conn.execute(
+                    f"SELECT column_name, data_type FROM information_schema.columns "
+                    f"WHERE table_schema = '{schema}' AND table_name = '{name}'"
+                ).fetchall()
+                schemas[schema].append({
+                    "name": name,
+                    "fq_name": f"vaccination_lake.{schema}.{name}",
+                    "columns": [{"name": c[0], "type": c[1]} for c in cols],
+                })
+            except Exception:
+                schemas[schema].append({"name": name, "fq_name": f"vaccination_lake.{schema}.{name}", "columns": []})
+        return jsonify({"schemas": schemas})
+    except Exception as e:
+        return jsonify({"schemas": {}, "error": str(e)})
+    finally:
+        conn.close()
+
+
 @app.route("/api/run/dbt-test")
 def run_dbt_test():
     """Run dbt tests."""

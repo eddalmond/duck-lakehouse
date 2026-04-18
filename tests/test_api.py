@@ -135,6 +135,12 @@ class TestSqlEndpoint:
         )
         assert resp.status_code == 403
 
+    def test_sql_schema_no_catalog(self, client):
+        resp = client.get("/api/sql/schema")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data.get("need_init") is True or "schemas" in data
+
 
 class TestSampleFiles:
     def test_list_sample_files_empty(self, client, mesh_dirs):
