@@ -126,7 +126,7 @@ def _refresh_table_cache():
                 except Exception:
                     count = None
                 tables.append({"name": fq_name, "rows": count})
-            cached_tables = [t for t in tables if t.get("rows") is None or t["rows"] > 0]
+            cached_tables = tables
         finally:
             conn.close()
     except Exception:
