@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 DuckLake Dashboard - Flask backend for pipeline visualization and control
+CACHE_BUST: 2026-04-18 14:46 UTC - force rebuild
 
 Concurrency strategy for DuckDB:
   DuckDB does not support concurrent access to the same .ducklake catalog.
