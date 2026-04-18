@@ -566,8 +566,10 @@ def run_stage(stage):
     """Stream output from running a pipeline stage."""
     def generate():
         if stage == "generate":
+            # Write to the same inbox that MESH simulator reads from
+            # (ARCHIVE_DIR.parent/inbox, which respects MESH_ARCHIVE_DIR env var)
             cmd = [sys.executable, "-m", "duck_lakehouse.data_generator",
-                   "--output", str(INBOX_DIR),
+                   "--output", str(ARCHIVE_DIR.parent / "inbox"),
                    "--records", "100", "--type", "all"]
         elif stage == "mesh":
             # Use ARCHIVE_DIR's parent as base-dir so generated files
