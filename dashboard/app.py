@@ -660,6 +660,12 @@ def _start_duckdb_ui():
     if _duckdb_ui_process is not None and _duckdb_ui_process.poll() is None:
         return True
     try:
+        # Check if duckdb CLI is available
+        result = subprocess.run(["which", "duckdb"], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("[DuckDB UI] duckdb CLI not found in PATH")
+            return False
+
         init_sql = (
             f"INSTALL ducklake; LOAD ducklake; "
             f"ATTACH 'ducklake:{CATALOG_PATH}' AS vaccination_lake "
@@ -667,12 +673,13 @@ def _start_duckdb_ui():
             f"USE vaccination_lake;"
         )
         _duckdb_ui_process = subprocess.Popen(
-            ["script", "-qc", f"duckdb -c \"{init_sql}\" -ui", "/dev/null"],
+            ["duckdb", "-c", init_sql, "-ui"],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         )
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[DuckDB UI] Failed to start: {e}")
         return False
 
 
