@@ -603,6 +603,64 @@ def run_stage(stage):
     return Response(generate(), mimetype="text/event-stream")
 
 
+@app.route("/api/sql", methods=["POST"])
+def execute_sql():
+    """Execute a SQL query against DuckLake (SELECT only)."""
+    try:
+        data = request.get_json() or {}
+        query = data.get("query", "").strip()
+        
+        if not query:
+            return jsonify({"error": "No query provided"}), 400
+        
+        # Security: only allow SELECT statements
+        query_upper = query.upper().strip()
+        forbidden_keywords = ["INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER", "TRUNCATE", "MERGE", "COPY"]
+        for keyword in forbidden_keywords:
+            if keyword in query_upper:
+                return jsonify({"error": f"Only SELECT queries are allowed. Found: {keyword}"}), 403
+        
+        # Check if write is in progress
+        if _write_in_progress.is_set():
+            return jsonify({"error": "Database is busy — a write operation is in progress", "busy": True}), 503
+        
+        # Execute query
+        conn, busy = _get_read_conn()
+        if conn is None:
+            return jsonify({"error": "Database is busy" if busy else "Failed to connect", "busy": busy}), 503
+        
+        try:
+            result = conn.execute(query)
+            columns = [desc[0] for desc in result.description] if result.description else []
+            rows = result.fetchall()
+            
+            # Convert rows to dict for JSON serialization
+            rows_dict = []
+            for row in rows:
+                row_dict = {}
+                for i, col in enumerate(columns):
+                    val = row[i]
+                    # Handle datetime and other non-serializable types
+                    if hasattr(val, 'isoformat'):
+                        row_dict[col] = val.isoformat()
+                    else:
+                        row_dict[col] = val
+                rows_dict.append(row_dict)
+            
+            return jsonify({
+                "columns": columns,
+                "rows": rows_dict,
+                "row_count": len(rows)
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/run/dbt-test")
 def run_dbt_test():
     """Run dbt tests."""

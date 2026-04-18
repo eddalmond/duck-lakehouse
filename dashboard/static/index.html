@@ -151,6 +151,7 @@
                     <div class="explorer-tabs">
                         <button class="explorer-tab active" onclick="switchExplorerTab('table')">Table View</button>
                         <button class="explorer-tab" onclick="switchExplorerTab('duckui')">DuckDB UI</button>
+                        <button class="explorer-tab" onclick="switchExplorerTab('sqleditor')">SQL Editor</button>
                     </div>
                 </div>
             </div>
@@ -195,6 +196,31 @@
                     <div class="explorer-footer">
                         <span class="text-xs text-slate-400">DuckDB UI running at <a href="http://localhost:4213" target="_blank" class="text-blue-500 hover:underline">localhost:4213</a></span>
                         <button class="text-xs text-slate-400 hover:text-red-500" onclick="openDuckDBUI()">Open in new tab</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Editor Tab -->
+            <div id="explorer-tab-sqleditor" class="explorer-tab-content" style="display:none;">
+                <div class="sql-editor-container" style="display: flex; flex-direction: column; height: 600px;">
+                    <!-- Query Input -->
+                    <div class="sql-input-wrap" style="flex: 0 0 auto; padding: 1rem; border-bottom: 1px solid #E2E8F0; background: #F8FAFC;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label class="text-sm font-medium text-slate-700">SQL Query (SELECT only)</label>
+                            <button class="btn-primary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="executeSql()">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                </svg>
+                                Run Query
+                            </button>
+                        </div>
+                        <textarea id="sql-editor" class="sql-textarea" placeholder="SELECT * FROM vaccination_lake.staging.stg_vaccinations LIMIT 10;" style="width: 100%; min-height: 120px; padding: 0.75rem; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; border: 1px solid #CBD5E1; border-radius: 6px; resize: vertical;"></textarea>
+                    </div>
+                    <!-- Results -->
+                    <div class="sql-results-wrap" style="flex: 1; overflow: auto; padding: 1rem;">
+                        <div id="sql-results" class="sql-results">
+                            <p class="text-slate-400 text-sm">Enter a SELECT query above and click Run Query to see results.</p>
+                        </div>
                     </div>
                 </div>
             </div>

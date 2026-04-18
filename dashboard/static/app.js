@@ -380,3 +380,83 @@ async function startDuckDBUI() {
 function openDuckDBUI() {
     window.open(`${API_BASE}/duckdb-ui/`, '_blank');
 }
+
+// SQL Editor
+async function executeSql() {
+    const editor = document.getElementById('sql-editor');
+    const resultsDiv = document.getElementById('sql-results');
+    const query = editor.value.trim();
+    
+    if (!query) {
+        resultsDiv.innerHTML = '<p class="text-amber-600 text-sm">Please enter a SQL query.</p>';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<p class="text-slate-400 text-sm">Running query...</p>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/sql`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            resultsDiv.innerHTML = `<p class="text-red-600 text-sm">Error: ${escapeHtml(data.error)}</p>`;
+            return;
+        }
+        
+        if (data.busy) {
+            resultsDiv.innerHTML = '<p class="text-amber-600 text-sm">Database is busy with a write operation. Please try again.</p>';
+            return;
+        }
+        
+        // Build results table
+        const columns = data.columns || [];
+        const rows = data.rows || [];
+        
+        if (columns.length === 0) {
+            resultsDiv.innerHTML = '<p class="text-slate-400 text-sm">Query executed successfully. No columns returned.</p>';
+            return;
+        }
+        
+        if (rows.length === 0) {
+            resultsDiv.innerHTML = '<p class="text-slate-400 text-sm">Query returned 0 rows.</p>';
+            return;
+        }
+        
+        // Build table
+        let html = '<div style="margin-bottom: 0.5rem;" class="text-sm text-slate-600">';
+        html += `Returned <strong>${data.row_count}</strong> row${data.row_count !== 1 ? 's' : ''}</div>`;
+        html += '<div style="overflow-x: auto;"><table class="data-table" style="font-size: 12px;"><thead><tr>';
+        
+        columns.forEach(col => {
+            html += `<th>${escapeHtml(col)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        rows.forEach(row => {
+            html += '<tr>';
+            columns.forEach(col => {
+                const val = row[col];
+                let display = val === null ? '<span class="text-slate-400">NULL</span>' : escapeHtml(String(val));
+                html += `<td>${display}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        resultsDiv.innerHTML = html;
+        
+    } catch (e) {
+        resultsDiv.innerHTML = `<p class="text-red-600 text-sm">Error: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
