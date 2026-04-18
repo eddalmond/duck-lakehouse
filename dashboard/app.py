@@ -719,9 +719,10 @@ def duckdb_ui_proxy(subpath=""):
 
 if __name__ == "__main__":
     import socket
-    port = int(os.environ.get("DUCKLAKE_PORT", "8765"))
+    port = int(os.environ.get("DUCKLAKE_PORT", os.environ.get("PORT", "8765")))
     host = os.environ.get("DUCKLAKE_HOST", "0.0.0.0")
     print("Starting DuckLake Dashboard...")
     print(f"Base directory: {BASE_DIR}")
     print(f"Listening on http://{host}:{port}")
-    app.run(debug=True, host=host, port=port, threaded=True)
+    debug = os.environ.get("FLASK_ENV") != "production"
+    app.run(debug=debug, host=host, port=port, threaded=True)
