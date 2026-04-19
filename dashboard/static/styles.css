@@ -481,22 +481,6 @@
   background: #F1F5F9;
 }
 
-/* DuckDB UI Section */
-.duckui-launch {
-  padding: 2rem 1.25rem;
-  text-align: center;
-}
-
-.duckui-launch .btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.duckui-frame-wrap {
-  position: relative;
-}
-
 /* Empty State */
 .empty-state {
   text-align: center;

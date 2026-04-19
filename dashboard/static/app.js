@@ -336,54 +336,6 @@ function switchExplorerTab(tab) {
     }
 }
 
-// DuckDB UI
-async function startDuckDBUI() {
-    const btn = document.getElementById('duckui-start-btn');
-    const statusText = document.getElementById('duckui-status-text');
-    btn.disabled = true;
-    btn.textContent = 'Starting...';
-    statusText.textContent = 'Starting DuckDB UI server...';
-
-    try {
-        const resp = await fetch(`${API_BASE}/api/duckdb-ui/start`);
-        const data = await resp.json();
-
-        if (data.status === 'started') {
-            statusText.textContent = 'Waiting for UI to be ready...';
-            let ready = false;
-            for (let i = 0; i < 20; i++) {
-                await new Promise(r => setTimeout(r, 1000));
-                try {
-                    const check = await fetch(`${API_BASE}/duckdb-ui/`, { method: 'HEAD' });
-                    if (check.ok || check.status === 200) {
-                        ready = true;
-                        break;
-                    }
-                } catch {}
-            }
-            if (ready) {
-                document.getElementById('duckui-launch').style.display = 'none';
-                const frame = document.getElementById('duckui-frame-wrap');
-                frame.style.display = '';
-                document.getElementById('duckui-iframe').src = `${API_BASE}/duckdb-ui/`;
-                statusText.textContent = 'Running';
-            } else {
-                statusText.textContent = 'UI started but not reachable yet. Try again in a moment.';
-            }
-        } else {
-            statusText.textContent = `Error: ${data.message || 'unknown'}`;
-        }
-    } catch (e) {
-        statusText.textContent = `Error: ${e.message}`;
-    }
-    btn.disabled = false;
-    btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Launch DuckDB UI`;
-}
-
-function openDuckDBUI() {
-    window.open(`${API_BASE}/duckdb-ui/`, '_blank');
-}
-
 // SQL Editor
 let sqlSchemaCache = null;
 

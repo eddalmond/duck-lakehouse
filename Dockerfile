@@ -9,13 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     bsdutils \
-    unzip \
-    curl \
-    && curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o /tmp/duckdb.zip \
-    && unzip -o /tmp/duckdb.zip -d /usr/local/bin/ \
-    && chmod +x /usr/local/bin/duckdb \
-    && rm /tmp/duckdb.zip \
-    && apt-get purge -y unzip curl \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
