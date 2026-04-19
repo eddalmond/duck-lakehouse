@@ -30,7 +30,7 @@ class TestInitDuckLake:
             data_path=ducklake_dirs["data_path"],
         )
         assert conn is not None
-        result = conn.execute("SHOW ALL TABLES").fetchall()
+        conn.execute("SHOW ALL TABLES").fetchall()
         conn.close()
 
     def test_init_idempotent(self, ducklake_dirs):
@@ -56,6 +56,7 @@ class TestInitDuckLake:
 
     def test_init_env_override(self, ducklake_dirs):
         import os
+
         os.environ["DUCKLAKE_CATALOG"] = ducklake_dirs["catalog_path"]
         os.environ["DUCKLAKE_DATA"] = ducklake_dirs["data_path"]
         conn = init_ducklake()

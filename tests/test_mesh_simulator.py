@@ -53,8 +53,9 @@ class TestMESHMessage:
 class TestMESHSimulator:
     def test_init_creates_dirs(self, mesh_dirs):
         import tempfile
+
         base = Path(tempfile.mkdtemp())
-        sim = MESHSimulator(base_dir=str(base))
+        MESHSimulator(base_dir=str(base))
         assert (base / "inbox").is_dir()
         assert (base / "processing").is_dir()
         assert (base / "archive").is_dir()
@@ -111,7 +112,9 @@ class TestMESHSimulator:
 
     def test_process_all(self, mesh_dirs):
         for i in range(3):
-            (mesh_dirs["inbox"] / f"test_{i}.csv").write_text(f"data_{i}\r\n", encoding="utf-8")
+            (mesh_dirs["inbox"] / f"test_{i}.csv").write_text(
+                f"data_{i}\r\n", encoding="utf-8"
+            )
 
         sim = MESHSimulator(base_dir=str(mesh_dirs["archive"].parent))
         results = sim.process_all()
@@ -130,7 +133,9 @@ class TestMESHSimulator:
         assert len(log_files) >= 1
 
         log_content = log_files[0].read_text(encoding="utf-8")
-        log_entries = [json.loads(line) for line in log_content.strip().split("\n") if line.strip()]
+        log_entries = [
+            json.loads(line) for line in log_content.strip().split("\n") if line.strip()
+        ]
         assert any(e["event"] == "move_to_processing" for e in log_entries)
         assert any(e["event"] == "archive" for e in log_entries)
 

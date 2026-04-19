@@ -1,13 +1,9 @@
 import re
-from pathlib import Path
-
-import pytest
 
 from duck_lakehouse.data_generator.generate_v5_data import (
     V5_FIELDS,
     ACTION_FLAGS,
     FORENAMES,
-    GENDER_CODES,
     SURNAMES,
     VACCINE_TYPES,
     generate_dataset,
@@ -16,7 +12,11 @@ from duck_lakehouse.data_generator.generate_v5_data import (
     generate_record,
     write_v5_csv,
 )
-from duck_lakehouse.data_generator.v5_fields import V5_FIELDS as V5_FIELDS_SPEC, MANDATORY_FIELDS, REQUIRED_FIELDS
+from duck_lakehouse.data_generator.v5_fields import (
+    V5_FIELDS as V5_FIELDS_SPEC,
+    MANDATORY_FIELDS,
+    REQUIRED_FIELDS,
+)
 
 
 class TestNhsNumberGeneration:
@@ -108,7 +108,11 @@ class TestCsvWrite:
         records = [generate_record("Flu")]
         path = write_v5_csv(records, tmp_dir, "Flu")
         content = path.read_text(encoding="utf-8")
-        lines = content.strip().split("\r\n") if "\r\n" in content else content.strip().split("\n")
+        lines = (
+            content.strip().split("\r\n")
+            if "\r\n" in content
+            else content.strip().split("\n")
+        )
         assert len(lines) == 2
         assert lines[0].count("|") > 0
 
@@ -118,7 +122,11 @@ class TestCsvWrite:
             path = write_v5_csv(records, tmp_dir, vtype)
             assert path.exists()
             content = path.read_text(encoding="utf-8")
-            lines = content.strip().split("\r\n") if "\r\n" in content else content.strip().split("\n")
+            lines = (
+                content.strip().split("\r\n")
+                if "\r\n" in content
+                else content.strip().split("\n")
+            )
             assert len(lines) == 4
 
 
@@ -128,7 +136,9 @@ class TestGenerateDataset:
         assert path.exists()
 
     def test_generate_dataset_custom_org(self, tmp_dir):
-        path = generate_dataset("COVID", num_records=5, output_dir=str(tmp_dir), org_code="ORG999")
+        path = generate_dataset(
+            "COVID", num_records=5, output_dir=str(tmp_dir), org_code="ORG999"
+        )
         assert "ORG999" in path.name
 
 

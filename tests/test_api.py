@@ -1,10 +1,10 @@
-import json
-from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
-from duck_lakehouse.ducklake.init_ducklake import init_ducklake, create_schemas, create_staging_tables
+from duck_lakehouse.ducklake.init_ducklake import (
+    init_ducklake,
+    create_schemas,
+    create_staging_tables,
+)
 
 
 @pytest.fixture
@@ -125,13 +125,17 @@ class TestSqlEndpoint:
         assert resp.status_code == 403
 
     def test_sql_forbidden_alter(self, client):
-        resp = client.post("/api/sql", json={"query": "ALTER TABLE foo ADD COLUMN x INT"})
+        resp = client.post(
+            "/api/sql", json={"query": "ALTER TABLE foo ADD COLUMN x INT"}
+        )
         assert resp.status_code == 403
 
     def test_sql_forbidden_keyword_in_select(self, client):
         resp = client.post(
             "/api/sql",
-            json={"query": "INSERT INTO staging.stg_vaccinations SELECT * FROM staging.stg_vaccinations"},
+            json={
+                "query": "INSERT INTO staging.stg_vaccinations SELECT * FROM staging.stg_vaccinations"
+            },
         )
         assert resp.status_code == 403
 

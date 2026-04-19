@@ -9,8 +9,6 @@ Each field is double-quoted and delimited by pipe characters.
 Filenames follow: {DiseaseType}_Vaccinations_v5_{OrgCode}_{Timestamp}.csv
 """
 
-import csv
-import json
 import random
 import uuid
 from datetime import datetime, timedelta
@@ -55,23 +53,67 @@ V5_FIELDS = [
 ]
 
 FORENAMES = [
-    "Oliver", "George", "Amelia", "Isla", "Noah", "Arthur",
-    "Mia", "Ella", "Leo", "Grace", "Harry", "Sophia",
-    "Charlie", "Emily", "Jack", "Lily", "William", "Ava",
-    "Henry", "Ivy",
+    "Oliver",
+    "George",
+    "Amelia",
+    "Isla",
+    "Noah",
+    "Arthur",
+    "Mia",
+    "Ella",
+    "Leo",
+    "Grace",
+    "Harry",
+    "Sophia",
+    "Charlie",
+    "Emily",
+    "Jack",
+    "Lily",
+    "William",
+    "Ava",
+    "Henry",
+    "Ivy",
 ]
 
 SURNAMES = [
-    "Smith", "Johnson", "Williams", "Brown", "Jones", "Taylor",
-    "Davies", "Evans", "Wilson", "Thomas", "Roberts", "Walker",
-    "Wright", "Thompson", "White", "Edwards", "Hughes", "Green",
-    "Clark", "Patel",
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Brown",
+    "Jones",
+    "Taylor",
+    "Davies",
+    "Evans",
+    "Wilson",
+    "Thomas",
+    "Roberts",
+    "Walker",
+    "Wright",
+    "Thompson",
+    "White",
+    "Edwards",
+    "Hughes",
+    "Green",
+    "Clark",
+    "Patel",
 ]
 
 POSTCODES = [
-    "SW1A 1AA", "M1 1AE", "B1 1AA", "LS1 4AP", "NE1 1AA",
-    "L1 1AA", "CF1 1AA", "EH1 1AA", "BS1 1AA", "EC1A 1BB",
-    "W1A 0AX", "SE1 7PB", "G1 1AA", "BT1 1AA", "DD1 1AA",
+    "SW1A 1AA",
+    "M1 1AE",
+    "B1 1AA",
+    "LS1 4AP",
+    "NE1 1AA",
+    "L1 1AA",
+    "CF1 1AA",
+    "EH1 1AA",
+    "BS1 1AA",
+    "EC1A 1BB",
+    "W1A 0AX",
+    "SE1 7PB",
+    "G1 1AA",
+    "BT1 1AA",
+    "DD1 1AA",
 ]
 
 SITE_CODES = ["B0C4P", "RX8", "F8G09", "Y0228", "E84080"]
@@ -82,21 +124,50 @@ VACCINE_TYPES = {
             ("822851000000102", "Seasonal influenza vaccination given (situation)"),
         ],
         "products": [
-            ("22704311000001104", "Fluenz Tetra nasal suspension (AstraZeneca UK Ltd)", "AstraZeneca", "0.2"),
-            ("35727511000001100", "Influvac sub-unit Tetra vaccine suspension for injection (BGP Products Ltd)", "BGP Products", "0.5"),
+            (
+                "22704311000001104",
+                "Fluenz Tetra nasal suspension (AstraZeneca UK Ltd)",
+                "AstraZeneca",
+                "0.2",
+            ),
+            (
+                "35727511000001100",
+                "Influvac sub-unit Tetra vaccine suspension for injection (BGP Products Ltd)",
+                "BGP Products",
+                "0.5",
+            ),
         ],
         "routes": [("78421000", "Intramuscular route"), ("46713006", "Nasal route")],
         "indication_code": "161096004",
     },
     "COVID": {
         "procedures": [
-            ("1324681000000101", "Administration of first dose of severe acute respiratory syndrome coronavirus 2 vaccine"),
-            ("1324691000000104", "Administration of second dose of severe acute respiratory syndrome coronavirus 2 vaccine"),
-            ("1362591000000103", "Administration of booster dose of severe acute respiratory syndrome coronavirus 2 vaccine"),
+            (
+                "1324681000000101",
+                "Administration of first dose of severe acute respiratory syndrome coronavirus 2 vaccine",
+            ),
+            (
+                "1324691000000104",
+                "Administration of second dose of severe acute respiratory syndrome coronavirus 2 vaccine",
+            ),
+            (
+                "1362591000000103",
+                "Administration of booster dose of severe acute respiratory syndrome coronavirus 2 vaccine",
+            ),
         ],
         "products": [
-            ("39114911000001105", "COVID-19 Vaccine Comirnaty 30micrograms/0.3ml dose concentrate for dispersion for injection multidose vials (Pfizer-BioNTech)", "Pfizer-BioNTech", "0.3"),
-            ("39115011000001105", "COVID-19 Vaccine Vaxzevria suspension for injection multidose vials (AstraZeneca)", "AstraZeneca", "0.5"),
+            (
+                "39114911000001105",
+                "COVID-19 Vaccine Comirnaty 30micrograms/0.3ml dose concentrate for dispersion for injection multidose vials (Pfizer-BioNTech)",
+                "Pfizer-BioNTech",
+                "0.3",
+            ),
+            (
+                "39115011000001105",
+                "COVID-19 Vaccine Vaxzevria suspension for injection multidose vials (AstraZeneca)",
+                "AstraZeneca",
+                "0.5",
+            ),
         ],
         "routes": [("78421000", "Intramuscular route")],
         "indication_code": "443684005",
@@ -106,30 +177,57 @@ VACCINE_TYPES = {
             ("1324701000000103", "Respiratory syncytial virus vaccination"),
         ],
         "products": [
-            ("4601781000001109", "Abrysvo suspension for injection 0.5ml pre-filled syringes (Pfizer Ltd)", "Pfizer", "0.5"),
+            (
+                "4601781000001109",
+                "Abrysvo suspension for injection 0.5ml pre-filled syringes (Pfizer Ltd)",
+                "Pfizer",
+                "0.5",
+            ),
         ],
         "routes": [("78421000", "Intramuscular route")],
         "indication_code": "55607004",
     },
     "HPV": {
         "procedures": [
-            ("308081000000105", "Measles mumps and rubella vaccination - first dose (procedure)"),
+            (
+                "308081000000105",
+                "Measles mumps and rubella vaccination - first dose (procedure)",
+            ),
         ],
         "products": [
-            ("34986411000001101", "Gardasil 9 suspension for injection 0.5ml pre-filled syringes (Merck Sharp & Dohme (UK) Ltd)", "MSD", "0.5"),
+            (
+                "34986411000001101",
+                "Gardasil 9 suspension for injection 0.5ml pre-filled syringes (Merck Sharp & Dohme (UK) Ltd)",
+                "MSD",
+                "0.5",
+            ),
         ],
         "routes": [("78421000", "Intramuscular route")],
         "indication_code": "363408001",
     },
     "MMR": {
         "procedures": [
-            ("308081000000105", "Measles mumps and rubella vaccination - first dose (procedure)"),
-            ("170433008", "Administration of second dose of vaccine product containing only Measles morbillivirus and Mumps orthorubulavirus and Rubella virus antigens (procedure)"),
+            (
+                "308081000000105",
+                "Measles mumps and rubella vaccination - first dose (procedure)",
+            ),
+            (
+                "170433008",
+                "Administration of second dose of vaccine product containing only Measles morbillivirus and Mumps orthorubulavirus and Rubella virus antigens (procedure)",
+            ),
         ],
         "products": [
-            ("10384511000001108", "MMRvaxPRO powder and solvent for suspension for injection 0.5ml vials (Merck Sharp & Dohme (UK) Ltd)", "MSD", "0.5"),
+            (
+                "10384511000001108",
+                "MMRvaxPRO powder and solvent for suspension for injection 0.5ml vials (Merck Sharp & Dohme (UK) Ltd)",
+                "MSD",
+                "0.5",
+            ),
         ],
-        "routes": [("78421000", "Intramuscular route"), ("445298008", "Subcutaneous route")],
+        "routes": [
+            ("78421000", "Intramuscular route"),
+            ("445298008", "Subcutaneous route"),
+        ],
         "indication_code": "363408001",
     },
 }
@@ -283,9 +381,7 @@ def generate_dataset(
     records = []
     for i in range(num_records):
         dose = random.choices([1, 2, 3], weights=[0.5, 0.3, 0.2])[0]
-        action = random.choices(
-            ACTION_FLAGS, weights=[0.85, 0.10, 0.05]
-        )[0]
+        action = random.choices(ACTION_FLAGS, weights=[0.85, 0.10, 0.05])[0]
         vacc_date = datetime.now() - timedelta(days=random.randint(1, 90))
         records.append(generate_record(vaccine_type, dose, action, vacc_date))
 

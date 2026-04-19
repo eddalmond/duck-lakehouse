@@ -70,15 +70,28 @@ def init_ducklake(
     return conn
 
 
-def create_schemas(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"):
+def create_schemas(
+    conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"
+):
     conn.execute(f"USE {lake_name}")
-    for schema in ["staging", "intermediate", "marts", "reference",
-                    "main_staging", "main_intermediate", "main_marts"]:
+    for schema in [
+        "staging",
+        "intermediate",
+        "marts",
+        "reference",
+        "main_staging",
+        "main_intermediate",
+        "main_marts",
+    ]:
         conn.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
-    print("Schemas created: staging, intermediate, marts, reference, main_staging, main_intermediate, main_marts")
+    print(
+        "Schemas created: staging, intermediate, marts, reference, main_staging, main_intermediate, main_marts"
+    )
 
 
-def create_staging_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"):
+def create_staging_tables(
+    conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"
+):
     conn.execute(f"USE {lake_name}.staging")
 
     conn.execute("""
@@ -124,7 +137,9 @@ def create_staging_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vac
     print("staging.stg_vaccinations created")
 
 
-def create_intermediate_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"):
+def create_intermediate_tables(
+    conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"
+):
     conn.execute(f"USE {lake_name}.intermediate")
 
     conn.execute("""
@@ -214,7 +229,9 @@ def create_intermediate_tables(conn: duckdb.DuckDBPyConnection, lake_name: str =
     print("intermediate tables created")
 
 
-def create_mart_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"):
+def create_mart_tables(
+    conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"
+):
     conn.execute(f"USE {lake_name}.marts")
 
     conn.execute("""
@@ -297,10 +314,14 @@ def create_mart_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccin
         )
     """)
 
-    print("marts tables created: fct_vaccination_events, dim_patient, dim_site, dim_vaccine")
+    print(
+        "marts tables created: fct_vaccination_events, dim_patient, dim_site, dim_vaccine"
+    )
 
 
-def create_reference_tables(conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"):
+def create_reference_tables(
+    conn: duckdb.DuckDBPyConnection, lake_name: str = "vaccination_lake"
+):
     conn.execute(f"USE {lake_name}.reference")
 
     conn.execute("""

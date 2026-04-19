@@ -1,7 +1,11 @@
 import pytest
 
 from duck_lakehouse.ducklake.ingest import V5_FIELDS, parse_pipe_csv, ingest_files
-from duck_lakehouse.ducklake.init_ducklake import init_ducklake, create_schemas, create_staging_tables
+from duck_lakehouse.ducklake.init_ducklake import (
+    init_ducklake,
+    create_schemas,
+    create_staging_tables,
+)
 
 
 @pytest.fixture
@@ -77,7 +81,9 @@ class TestIngestFiles:
         )
         assert result == 0
 
-    def test_ingest_from_inbox_fallback(self, setup_ducklake, mesh_dirs, sample_csv_content):
+    def test_ingest_from_inbox_fallback(
+        self, setup_ducklake, mesh_dirs, sample_csv_content
+    ):
         inbox_file = mesh_dirs["inbox"] / "Flu_Vaccinations_v5_TEST_inbox.csv"
         inbox_file.write_text(sample_csv_content, encoding="utf-8")
 
@@ -104,7 +110,9 @@ class TestIngestFiles:
             f"ATTACH 'ducklake:{setup_ducklake['catalog_path']}' AS vaccination_lake "
             f"(READ_ONLY, DATA_PATH '{setup_ducklake['data_path']}')"
         )
-        count = conn.execute("SELECT COUNT(*) FROM vaccination_lake.staging.stg_vaccinations").fetchone()[0]
+        count = conn.execute(
+            "SELECT COUNT(*) FROM vaccination_lake.staging.stg_vaccinations"
+        ).fetchone()[0]
         conn.close()
         assert count == 2
 

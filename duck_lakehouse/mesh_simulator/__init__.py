@@ -1,1 +1,1 @@
-from .mesh_simulator import MESHSimulator, MESHMessage
+from .mesh_simulator import MESHSimulator as MESHSimulator, MESHMessage as MESHMessage

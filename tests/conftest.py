@@ -66,7 +66,7 @@ def sample_csv_file(mesh_dirs, sample_csv_content):
 
 @pytest.fixture
 def app_with_temp_dirs(ducklake_dirs, mesh_dirs):
-    from dashboard.app import app as flask_app, BASE_DIR
+    from dashboard.app import app as flask_app
 
     flask_app.config["TESTING"] = True
 

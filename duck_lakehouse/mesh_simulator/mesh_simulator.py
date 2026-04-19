@@ -100,7 +100,7 @@ class MESHSimulator:
 
     def process_message(self, message: MESHMessage) -> Optional[Path]:
         try:
-            filepath = self.move_to_processing(message)
+            self.move_to_processing(message)
             logger.info("Processing %s (%d bytes)", message.filename, message.size)
             time.sleep(0.1)
             archive_path = self.move_to_archive(message)

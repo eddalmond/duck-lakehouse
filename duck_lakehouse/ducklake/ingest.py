@@ -6,27 +6,46 @@ Reads pipe-delimited v5 CSV files from the MESH archive directory
 and loads them into staging.stg_vaccinations.
 """
 
-import csv
 import os
 import re
-from datetime import datetime
 from pathlib import Path
-
-import duckdb
 
 
 V5_FIELDS = [
-    "NHS_NUMBER", "PERSON_FORENAME", "PERSON_SURNAME", "PERSON_DOB",
-    "PERSON_GENDER_CODE", "PERSON_POSTCODE", "DATE_AND_TIME", "SITE_CODE",
-    "SITE_CODE_TYPE_URI", "UNIQUE_ID", "UNIQUE_ID_URI", "ACTION_FLAG",
-    "PERFORMING_PROFESSIONAL_FORENAME", "PERFORMING_PROFESSIONAL_SURNAME",
-    "RECORDED_DATE", "PRIMARY_SOURCE", "VACCINATION_PROCEDURE_CODE",
-    "VACCINATION_PROCEDURE_TERM", "DOSE_SEQUENCE", "VACCINE_PRODUCT_CODE",
-    "VACCINE_PRODUCT_TERM", "VACCINE_MANUFACTURER", "BATCH_NUMBER",
-    "EXPIRY_DATE", "SITE_OF_VACCINATION_CODE", "SITE_OF_VACCINATION_TERM",
-    "ROUTE_OF_VACCINATION_CODE", "ROUTE_OF_VACCINATION_TERM",
-    "DOSE_AMOUNT", "DOSE_UNIT_CODE", "DOSE_UNIT_TERM",
-    "INDICATION_CODE", "LOCATION_CODE", "LOCATION_CODE_TYPE_URI",
+    "NHS_NUMBER",
+    "PERSON_FORENAME",
+    "PERSON_SURNAME",
+    "PERSON_DOB",
+    "PERSON_GENDER_CODE",
+    "PERSON_POSTCODE",
+    "DATE_AND_TIME",
+    "SITE_CODE",
+    "SITE_CODE_TYPE_URI",
+    "UNIQUE_ID",
+    "UNIQUE_ID_URI",
+    "ACTION_FLAG",
+    "PERFORMING_PROFESSIONAL_FORENAME",
+    "PERFORMING_PROFESSIONAL_SURNAME",
+    "RECORDED_DATE",
+    "PRIMARY_SOURCE",
+    "VACCINATION_PROCEDURE_CODE",
+    "VACCINATION_PROCEDURE_TERM",
+    "DOSE_SEQUENCE",
+    "VACCINE_PRODUCT_CODE",
+    "VACCINE_PRODUCT_TERM",
+    "VACCINE_MANUFACTURER",
+    "BATCH_NUMBER",
+    "EXPIRY_DATE",
+    "SITE_OF_VACCINATION_CODE",
+    "SITE_OF_VACCINATION_TERM",
+    "ROUTE_OF_VACCINATION_CODE",
+    "ROUTE_OF_VACCINATION_TERM",
+    "DOSE_AMOUNT",
+    "DOSE_UNIT_CODE",
+    "DOSE_UNIT_TERM",
+    "INDICATION_CODE",
+    "LOCATION_CODE",
+    "LOCATION_CODE_TYPE_URI",
 ]
 
 
@@ -75,7 +94,9 @@ def ingest_files(
     csv_files = sorted(archive.glob("*.csv"))
     inbox_files = sorted(inbox_dir.glob("*.csv")) if inbox_dir.exists() else []
     if not csv_files and inbox_files:
-        print(f"No CSV files in archive, found {len(inbox_files)} in inbox — processing from inbox")
+        print(
+            f"No CSV files in archive, found {len(inbox_files)} in inbox — processing from inbox"
+        )
         csv_files = inbox_files
     elif not csv_files and not inbox_files:
         print("No CSV files in archive or inbox")
@@ -104,7 +125,7 @@ def ingest_files(
         cols = ["_source_file"] + V5_FIELDS
         placeholders = ", ".join(["?" for _ in cols])
         insert_sql = f"""
-            INSERT INTO stg_vaccinations ({', '.join(cols)})
+            INSERT INTO stg_vaccinations ({", ".join(cols)})
             VALUES ({placeholders})
         """
         for record in records:

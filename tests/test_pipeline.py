@@ -36,13 +36,19 @@ class TestFullPipeline:
             assert path.exists()
             content = path.read_text(encoding="utf-8")
             assert len(content) > 0
-            lines = content.strip().split("\r\n") if "\r\n" in content else content.strip().split("\n")
+            lines = (
+                content.strip().split("\r\n")
+                if "\r\n" in content
+                else content.strip().split("\n")
+            )
             assert len(lines) == 11
 
     def test_mesh_processes_files(self, pipeline_dirs, mesh_dirs):
         from duck_lakehouse.data_generator.generate_v5_data import generate_dataset
 
-        generate_dataset("Flu", num_records=5, output_dir=str(mesh_dirs["inbox"]), org_code="TEST")
+        generate_dataset(
+            "Flu", num_records=5, output_dir=str(mesh_dirs["inbox"]), org_code="TEST"
+        )
 
         sim = MESHSimulator(base_dir=str(mesh_dirs["archive"].parent))
         results = sim.process_all()
@@ -55,7 +61,9 @@ class TestFullPipeline:
         assert len(list(mesh_dirs["inbox"].glob("*.csv"))) == 0
 
     def test_init_then_ingest(self, pipeline_dirs, mesh_dirs):
-        generate_dataset("Flu", num_records=5, output_dir=str(mesh_dirs["inbox"]), org_code="TEST")
+        generate_dataset(
+            "Flu", num_records=5, output_dir=str(mesh_dirs["inbox"]), org_code="TEST"
+        )
 
         sim = MESHSimulator(base_dir=str(mesh_dirs["archive"].parent))
         sim.process_all()
@@ -103,7 +111,12 @@ class TestFullPipeline:
 
     def test_ingest_multiple_vaccine_types(self, pipeline_dirs, mesh_dirs):
         for vtype in ["Flu", "COVID", "RSV"]:
-            generate_dataset(vtype, num_records=3, output_dir=str(mesh_dirs["inbox"]), org_code="TEST")
+            generate_dataset(
+                vtype,
+                num_records=3,
+                output_dir=str(mesh_dirs["inbox"]),
+                org_code="TEST",
+            )
 
         sim = MESHSimulator(base_dir=str(mesh_dirs["archive"].parent))
         sim.process_all()
@@ -126,7 +139,9 @@ class TestFullPipeline:
         assert count >= 9
 
     def test_reingest_does_not_duplicate(self, pipeline_dirs, mesh_dirs):
-        generate_dataset("Flu", num_records=3, output_dir=str(mesh_dirs["inbox"]), org_code="TEST")
+        generate_dataset(
+            "Flu", num_records=3, output_dir=str(mesh_dirs["inbox"]), org_code="TEST"
+        )
 
         sim = MESHSimulator(base_dir=str(mesh_dirs["archive"].parent))
         sim.process_all()
